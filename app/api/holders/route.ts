@@ -8,6 +8,7 @@ import {
   rankWindowSeconds,
 } from "@/lib/history";
 import { TOKEN_MINT } from "@/lib/config";
+import { maybeRefreshFlows, getFlow, flowsAgeSeconds } from "@/lib/flows";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,21 +27,29 @@ export async function GET(req: NextRequest) {
     void computeHolders(mint, 250)
       .then((full) => {
         recordRanks(full.holders);
+        void maybeRefreshFlows(full.holders);
         return maybeCapture(full);
       })
       .catch(() => {});
 
     // Attach per-wallet movement versus the ~24h baseline.
-    const holders = data.holders.map((h) => ({
-      ...h,
-      ...movementFor(h.owner, h.rank, h.amount),
-    }));
+    const holders = data.holders.map((h) => {
+      const flow = getFlow(h.owner);
+      return {
+        ...h,
+        ...movementFor(h.owner, h.rank, h.amount),
+        bought: flow ? flow.bought : null,
+        sold: flow ? flow.sold : null,
+        flowReconciled: flow ? flow.reconciled : false,
+      };
+    });
 
     return NextResponse.json({
       ...data,
       holders,
       baseline: getBaseline(),
       rankWindowSeconds: rankWindowSeconds(),
+      flowsAgeSeconds: flowsAgeSeconds(),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

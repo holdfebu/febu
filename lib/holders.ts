@@ -18,6 +18,10 @@ export interface Holder {
   rankDelta?: number | null;
   balancePct?: number | null;
   isNew?: boolean;
+  /** Lifetime buy/sell totals (top 50 only), attached by the API route. */
+  bought?: number | null;
+  sold?: number | null;
+  flowReconciled?: boolean;
 }
 
 export interface BucketStat {
@@ -54,6 +58,8 @@ export interface HoldersPayload {
   pools: Holder[];
   /** Age of the rank baseline in seconds (null until history exists). */
   rankWindowSeconds?: number | null;
+  /** Age of the last buy/sell refresh in seconds. */
+  flowsAgeSeconds?: number | null;
   concentration: {
     top1: number;
     top10: number;

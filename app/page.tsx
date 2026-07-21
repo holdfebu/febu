@@ -887,6 +887,9 @@ function HoldersTable({
             {data.rankWindowSeconds != null
               ? ` · movement vs ${fmtDuration(data.rankWindowSeconds)} ago`
               : ""}
+            {data.flowsAgeSeconds != null
+              ? ` · buy/sell top 50, updated ${fmtDuration(data.flowsAgeSeconds)} ago`
+              : ""}
           </span>
           <button className="mini-refresh" onClick={onRefresh} disabled={refreshing}>
             {refreshing ? "↻ …" : "↻ Refresh"}
@@ -900,6 +903,8 @@ function HoldersTable({
               <tr>
                 <th>#</th>
                 <th>Wallet</th>
+                <th style={{ textAlign: "right" }}>Bought</th>
+                <th style={{ textAlign: "right" }}>Sold</th>
                 <th style={{ textAlign: "right" }}>Amount</th>
                 <th style={{ textAlign: "right" }}>Share</th>
                 <th>Tier</th>
@@ -948,6 +953,25 @@ function HoldersTable({
                         </button>
                       )}
                     </td>
+                    <td
+                      className={`num flow-buy${h.flowReconciled === false && h.bought != null ? " partial" : ""}`}
+                      title={
+                        h.bought != null && h.flowReconciled === false
+                          ? "Partial history — wallet has more transactions than we walk"
+                          : undefined
+                      }
+                    >
+                      {h.bought != null
+                        ? `${h.flowReconciled === false ? "~" : ""}${fmtNumber(h.bought)}`
+                        : "—"}
+                    </td>
+                    <td
+                      className={`num flow-sell${h.flowReconciled === false && h.sold != null ? " partial" : ""}`}
+                    >
+                      {h.sold != null
+                        ? `${h.flowReconciled === false ? "~" : ""}${fmtNumber(h.sold)}`
+                        : "—"}
+                    </td>
                     <td className="num">{fmtNumber(h.amount)}</td>
                     <td className="num">{fmtPct(h.percentage)}</td>
                     <td>
@@ -981,7 +1005,7 @@ function HoldersTable({
                   </tr>
                   {h.pool && openPool === h.owner && (
                     <tr className="pool-row">
-                      <td colSpan={7}>
+                      <td colSpan={9}>
                         <PoolBreakdown
                           detail={poolData[h.owner]}
                           venue={h.pool}

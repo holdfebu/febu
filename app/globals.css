@@ -961,3 +961,15 @@ td.rank {
   font-size: 9.5px;
   letter-spacing: 0.3px;
 }
+
+/* --- Buy / sell flow columns --- */
+.flow-buy {
+  color: var(--green);
+}
+.flow-sell {
+  color: var(--red);
+}
+.flow-buy.partial,
+.flow-sell.partial {
+  opacity: 0.55;
+}
