@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Shared across all viewers: clients poll every 10s, so without this a crowd
 // would multiply straight through to Jupiter and get rate limited.
-const PRICE_TTL_MS = 7_000;
+const PRICE_TTL_MS = 2_000;
 const cache = new Map<string, { at: number; data: Awaited<ReturnType<typeof getTokenPrice>> }>();
 const inflight = new Map<string, Promise<Awaited<ReturnType<typeof getTokenPrice>>>>();
 

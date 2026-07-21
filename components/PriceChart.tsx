@@ -24,11 +24,11 @@ type Range = (typeof RANGES)[number];
 
 // How often to re-pull candles, matched to how fast each range's bars move.
 const REFRESH_MS: Record<Range, number> = {
-  "1H": 15_000,
-  "6H": 20_000,
-  "24H": 30_000,
-  "7D": 60_000,
-  "30D": 120_000,
+  "1H": 6_000,
+  "6H": 8_000,
+  "24H": 10_000,
+  "7D": 30_000,
+  "30D": 60_000,
   ALL: 300_000,
 };
 

@@ -21,7 +21,7 @@ interface PriceInfo {
   at: number;
 }
 
-const PRICE_POLL_MS = 10_000;
+const PRICE_POLL_MS = 3_000;
 
 interface PoolDetail {
   owner: string;

@@ -23,8 +23,8 @@ interface Entry {
 // The newest candle keeps moving until it closes, so short timeframes need a
 // tight TTL to feel live; longer ones barely change between requests.
 const TTL: Record<Timeframe, number> = {
-  minute: 12_000,
-  hour: 60_000,
+  minute: 5_000,
+  hour: 30_000,
   day: 300_000,
 };
 
