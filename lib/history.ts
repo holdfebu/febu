@@ -115,6 +115,11 @@ export async function maybeCapture(payload: HoldersPayload): Promise<void> {
   // Independent throttle so failed attempts retry soon, but don't hammer.
   if (Date.now() - lastAttemptAt < RETRY_AFTER_MS) return;
 
+  // The payload may have been trimmed to a caller's ?limit=. Snapshotting a
+  // short list would record a baseline built from a handful of wallets.
+  const expected = Math.min(100, payload.totalHolders);
+  if (payload.holders.length < expected) return;
+
   capturing = true;
   lastAttemptAt = Date.now();
   try {

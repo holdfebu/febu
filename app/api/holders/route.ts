@@ -15,7 +15,11 @@ export async function GET(req: NextRequest) {
     const data = await computeHolders(mint, Math.min(Math.max(limit, 1), 2000), force);
 
     // Record history in the background — never block the response.
-    void maybeCapture(data);
+    // Re-read at the full top-100 (a cache hit): `data` is trimmed to the
+    // caller's ?limit=, and snapshotting that would record a partial baseline.
+    void computeHolders(mint, 100)
+      .then(maybeCapture)
+      .catch(() => {});
 
     return NextResponse.json({ ...data, baseline: getBaseline() });
   } catch (err) {
