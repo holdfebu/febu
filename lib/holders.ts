@@ -1,5 +1,6 @@
 import { getAllTokenAccounts, getTokenSupply } from "./helius";
 import { BUCKETS, bucketForPct } from "./config";
+import { classifyPools } from "./pools";
 
 export interface Holder {
   rank: number;
@@ -10,6 +11,8 @@ export interface Holder {
   rawAmount: number;
   percentage: number;
   bucketKey: string;
+  /** Protocol name if this address is a liquidity pool vault, else null. */
+  pool: string | null;
 }
 
 export interface BucketStat {
@@ -36,6 +39,12 @@ export interface HoldersPayload {
   holders: Holder[]; // truncated for transport (top N)
   returnedHolders: number;
   buckets: BucketStat[];
+  /** Same tiers with liquidity pools removed — the real holder distribution. */
+  bucketsExPools: BucketStat[];
+  /** Supply burned, derived from the launch supply minus current supply. */
+  burned: { amount: number; pct: number };
+  /** Supply sitting in AMM liquidity pools. */
+  liquidity: { amount: number; pct: number; count: number; venues: string[] };
   concentration: {
     top1: number;
     top10: number;
@@ -61,6 +70,11 @@ const TTL_MS = 60_000;
 // A "fresh" request still reuses a very recent scan. Without this floor, a
 // crowd hitting Refresh would each kick off their own full chain scan.
 const FORCE_MIN_AGE_MS = 15_000;
+// How deep to look for liquidity pools. Pools hold large balances, so the
+// top slice catches them all without scanning every holder.
+const POOL_SCAN_DEPTH = 200;
+// pump.fun tokens launch with a fixed 1B supply; burns reduce it from there.
+const LAUNCH_SUPPLY = 1_000_000_000;
 
 // One scan at a time per mint: concurrent callers await the same promise
 // instead of each starting their own (critical with many simultaneous users).
@@ -158,13 +172,48 @@ async function buildPayload(mint: string): Promise<HoldersPayload> {
       rawAmount,
       percentage,
       bucketKey: bucketForPct(percentage).key,
+      pool: null,
     });
   }
 
   holdersAll.sort((a, b) => b.rawAmount - a.rawAmount);
   holdersAll.forEach((h, i) => (h.rank = i + 1));
 
+  // Pools always sit near the top by balance, so classifying the largest
+  // holders catches them all in a couple of RPC calls.
+  const poolMap = await classifyPools(
+    holdersAll.slice(0, POOL_SCAN_DEPTH).map((h) => h.owner)
+  );
+  for (const h of holdersAll) h.pool = poolMap.get(h.owner) ?? null;
+
   const totalHolders = holdersAll.length;
+
+  const bucketsFrom = (list: Holder[]): BucketStat[] => {
+    const n = list.length;
+    return BUCKETS.map((b) => {
+      const inBucket = list.filter((h) => h.bucketKey === b.key);
+      const supplyUiSum = inBucket.reduce((s, h) => s + h.amount, 0);
+      return {
+        key: b.key,
+        label: b.label,
+        emoji: b.emoji,
+        color: b.color,
+        rangeLabel: rangeLabel(b.min, b.max),
+        min: b.min,
+        max: b.max === Infinity ? null : b.max,
+        count: inBucket.length,
+        holdersPct: n ? (inBucket.length / n) * 100 : 0,
+        supplyPct: supplyUi ? (supplyUiSum / supplyUi) * 100 : 0,
+        supplyUi: supplyUiSum,
+      };
+    });
+  };
+
+  const poolHolders = holdersAll.filter((h) => h.pool);
+  const realHolders = holdersAll.filter((h) => !h.pool);
+
+  const liquidityUi = poolHolders.reduce((s, h) => s + h.amount, 0);
+  const burnedAmount = Math.max(0, LAUNCH_SUPPLY - supplyUi);
 
   // Bucket stats over ALL holders.
   const buckets: BucketStat[] = BUCKETS.map((b) => {
@@ -198,6 +247,17 @@ async function buildPayload(mint: string): Promise<HoldersPayload> {
     holders: holdersAll,
     returnedHolders: totalHolders,
     buckets,
+    bucketsExPools: bucketsFrom(realHolders),
+    burned: {
+      amount: burnedAmount,
+      pct: LAUNCH_SUPPLY ? (burnedAmount / LAUNCH_SUPPLY) * 100 : 0,
+    },
+    liquidity: {
+      amount: liquidityUi,
+      pct: supplyUi ? (liquidityUi / supplyUi) * 100 : 0,
+      count: poolHolders.length,
+      venues: [...new Set(poolHolders.map((h) => h.pool!))].sort(),
+    },
     concentration: {
       top1: sumPct(holdersAll.slice(0, 1)),
       top10: sumPct(holdersAll.slice(0, 10)),

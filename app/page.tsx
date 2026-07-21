@@ -283,6 +283,9 @@ export default function Page() {
           <StatCards data={data} price={price} />
           <BucketSection
             buckets={data.buckets}
+            bucketsExPools={data.bucketsExPools}
+            burned={data.burned}
+            liquidity={data.liquidity}
             totalHolders={data.totalHolders}
             price={price}
             prevBuckets={prevBuckets}
@@ -419,6 +422,9 @@ function usdRangeLabel(
 
 function BucketSection({
   buckets,
+  bucketsExPools,
+  burned,
+  liquidity,
   totalHolders,
   price,
   prevBuckets,
@@ -426,25 +432,43 @@ function BucketSection({
   supplyUi,
 }: {
   buckets: BucketStat[];
+  bucketsExPools: BucketStat[];
+  burned: { amount: number; pct: number };
+  liquidity: { amount: number; pct: number; count: number; venues: string[] };
   totalHolders: number;
   price: PriceInfo | null;
   prevBuckets: Record<string, number> | null;
   baselineAge: number | null;
   supplyUi: number;
 }) {
-  const maxCount = Math.max(1, ...buckets.map((b) => b.count));
+  const [excludePools, setExcludePools] = useState(false);
+  const shown = excludePools ? bucketsExPools : buckets;
+  const maxCount = Math.max(1, ...shown.map((b) => b.count));
   const marketCap = price ? price.usdPrice * supplyUi : null;
+  const burnedUsd = price ? burned.amount * price.usdPrice : null;
+  const liqUsd = price ? liquidity.amount * price.usdPrice : null;
   return (
     <div className="section">
       <div className="section-head">
-        <h2>Holders by share of supply</h2>
-        <span className="hint">
-          {totalHolders.toLocaleString()} holders
-          {baselineAge != null ? ` · change vs ${fmtDuration(baselineAge)} ago` : ""}
-        </span>
+        <h2>Holders by Share of Supply</h2>
+        <div className="head-tools">
+          <span className="hint">
+            {totalHolders.toLocaleString()} holders
+            {baselineAge != null
+              ? ` · change vs ${fmtDuration(baselineAge)} ago`
+              : ""}
+          </span>
+          <button
+            className={`toggle-btn${excludePools ? " on" : ""}`}
+            onClick={() => setExcludePools((v) => !v)}
+            title="Liquidity pools are not real holders — hide them to see the true distribution"
+          >
+            {excludePools ? "☑ Pools hidden" : "☐ Exclude pools"}
+          </button>
+        </div>
       </div>
       <div className="bucket-grid">
-        {buckets.map((b) => {
+        {shown.map((b) => {
           const usd = price ? b.supplyUi * price.usdPrice : null;
           return (
             <div className="bucket" key={b.key}>
@@ -484,6 +508,72 @@ function BucketSection({
             </div>
           );
         })}
+
+        {/* Burned — supply permanently removed */}
+        <div className="bucket special">
+          <div className="top">
+            <div className="name">
+              <span className="tier-dot" style={{ background: "#fb7185" }} />
+              Burned
+            </div>
+            <span className="range">supply</span>
+          </div>
+          <div className="count">
+            {fmtPct(burned.pct)}
+            <small>of launch supply</small>
+          </div>
+          <div className="bucket-usd">
+            {burnedUsd != null ? fmtUsd(burnedUsd) : "—"}
+            <span className="bucket-usd-sub">destroyed at current price</span>
+          </div>
+          <div className="bar">
+            <span
+              style={{
+                width: `${Math.min(100, burned.pct)}%`,
+                background: "#fb7185",
+              }}
+            />
+          </div>
+          <div className="legend">
+            <span>{fmtNumber(burned.amount)} tokens</span>
+            <span>1B at launch</span>
+          </div>
+        </div>
+
+        {/* Liquidity — supply sitting in AMM pools */}
+        <div className="bucket special">
+          <div className="top">
+            <div className="name">
+              <span className="tier-dot" style={{ background: "#38bdf8" }} />
+              Liquidity
+            </div>
+            <span className="range">
+              {liquidity.count} pool{liquidity.count === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="count">
+            {fmtPct(liquidity.pct)}
+            <small>of supply in pools</small>
+          </div>
+          <div className="bucket-usd">
+            {liqUsd != null ? fmtUsd(liqUsd) : "—"}
+            <span className="bucket-usd-sub">
+              {liquidity.venues.length ? liquidity.venues.join(" · ") : "none found"}
+            </span>
+          </div>
+          <div className="bar">
+            <span
+              style={{
+                width: `${Math.min(100, liquidity.pct)}%`,
+                background: "#38bdf8",
+              }}
+            />
+          </div>
+          <div className="legend">
+            <span>{fmtNumber(liquidity.amount)} tokens</span>
+            <span>not real holders</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -636,6 +726,7 @@ function HoldersTable({
                           ×{h.accounts}
                         </span>
                       )}
+                      {h.pool && <span className="lp-badge">LP · {h.pool}</span>}
                     </td>
                     <td className="num">{fmtNumber(h.amount)}</td>
                     <td className="num">{fmtPct(h.percentage)}</td>

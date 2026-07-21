@@ -134,6 +134,30 @@ export async function getAllTokenAccounts(
   return out;
 }
 
+/**
+ * For each address, which program owns that account (null if the account
+ * doesn't exist). Batched 100 at a time — the RPC maximum.
+ */
+export async function getMultipleAccountOwners(
+  addresses: string[]
+): Promise<Map<string, string | null>> {
+  const out = new Map<string, string | null>();
+
+  for (let i = 0; i < addresses.length; i += 100) {
+    const chunk = addresses.slice(i, i + 100);
+    const result = await heliusRpc<{
+      value: Array<{ owner: string } | null>;
+    }>("getMultipleAccounts", [chunk, { encoding: "base64" }]);
+
+    chunk.forEach((addr, idx) => {
+      const acct = result.value?.[idx];
+      out.set(addr, acct ? acct.owner : null);
+    });
+  }
+
+  return out;
+}
+
 // Find the earliest known block time for an account by paging its signature
 // history to the oldest entry. Returns unix seconds, or null if unknown.
 export async function getEarliestBlockTime(
