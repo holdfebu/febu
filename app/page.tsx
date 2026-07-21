@@ -310,6 +310,7 @@ export default function Page() {
             onRefresh={refreshCohorts}
             refreshing={refreshingCohorts}
           />
+          <PoolsSection pools={data.pools ?? []} price={price} />
           <HoldersTable
             data={data}
             ages={ages}
@@ -583,7 +584,6 @@ function BucketSection({
           </div>
           <div className="legend">
             <span>{fmtNumber(liquidity.amount)} tokens</span>
-            <span>not real holders</span>
           </div>
         </div>
       </div>
@@ -654,6 +654,83 @@ function CohortSection({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function PoolsSection({
+  pools,
+  price,
+}: {
+  pools: Holder[];
+  price: PriceInfo | null;
+}) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Record<string, PoolDetail | "loading">>({});
+
+  const toggle = useCallback(
+    async (owner: string) => {
+      if (open === owner) return setOpen(null);
+      setOpen(owner);
+      if (detail[owner]) return;
+      setDetail((p) => ({ ...p, [owner]: "loading" }));
+      try {
+        const res = await fetch(`/api/pool?owner=${owner}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error();
+        setDetail((p) => ({ ...p, [owner]: json as PoolDetail }));
+      } catch {
+        setDetail((p) => ({
+          ...p,
+          [owner]: { owner, entries: [], tvl: 0, at: Date.now() },
+        }));
+      }
+    },
+    [open, detail]
+  );
+
+  if (!pools.length) return null;
+
+  return (
+    <div className="section">
+      <div className="section-head">
+        <h2>Liquidity Pools</h2>
+        <span className="hint">
+          {pools.length} pool{pools.length === 1 ? "" : "s"} · click to expand
+        </span>
+      </div>
+      <div className="pools-list">
+        {pools.map((p) => (
+          <div className="pool-card" key={p.owner}>
+            <button className="pool-card-head" onClick={() => toggle(p.owner)}>
+              <span className="pool-venue">{p.pool}</span>
+              <a
+                className="addr pool-addr"
+                href={`https://solscan.io/account/${p.owner}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {shortAddr(p.owner, 4, 4)}
+              </a>
+              <span className="pool-rank">rank #{p.rank}</span>
+              <span className="pool-amt">
+                {fmtNumber(p.amount)} <small>febu</small>
+              </span>
+              <span className="pool-pct">{fmtPct(p.percentage)}</span>
+              <span className="pool-val">
+                {price ? fmtUsd(p.amount * price.usdPrice) : "—"}
+              </span>
+              <span className="pool-caret">{open === p.owner ? "▴" : "▾"}</span>
+            </button>
+            {open === p.owner && (
+              <div className="pool-card-body">
+                <PoolBreakdown detail={detail[p.owner]} venue={p.pool || ""} />
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

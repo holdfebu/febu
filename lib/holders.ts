@@ -45,6 +45,8 @@ export interface HoldersPayload {
   burned: { amount: number; pct: number };
   /** Supply sitting in AMM liquidity pools. */
   liquidity: { amount: number; pct: number; count: number; venues: string[] };
+  /** Every detected pool, ranked — including any below the table cut-off. */
+  pools: Holder[];
   concentration: {
     top1: number;
     top10: number;
@@ -72,7 +74,7 @@ const TTL_MS = 60_000;
 const FORCE_MIN_AGE_MS = 15_000;
 // How deep to look for liquidity pools. Pools hold large balances, so the
 // top slice catches them all without scanning every holder.
-const POOL_SCAN_DEPTH = 200;
+const POOL_SCAN_DEPTH = 2000;
 // pump.fun tokens launch with a fixed 1B supply; burns reduce it from there.
 const LAUNCH_SUPPLY = 1_000_000_000;
 
@@ -252,6 +254,7 @@ async function buildPayload(mint: string): Promise<HoldersPayload> {
       amount: burnedAmount,
       pct: LAUNCH_SUPPLY ? (burnedAmount / LAUNCH_SUPPLY) * 100 : 0,
     },
+    pools: poolHolders,
     liquidity: {
       amount: liquidityUi,
       pct: supplyUi ? (liquidityUi / supplyUi) * 100 : 0,
