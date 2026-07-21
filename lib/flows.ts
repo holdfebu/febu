@@ -74,6 +74,11 @@ async function fetchFlow(owner: string, balance: number): Promise<Flow | null> {
     await sleep(120);
   }
 
+  // A wallet holding tokens must have received them. Finding nothing means the
+  // acquisition predates our page budget, so report unknown rather than "0" —
+  // a zero next to a multi-million balance reads as fact and isn't one.
+  if (bought === 0 && balance > 0) return null;
+
   // If net matches the balance we've seen the wallet's whole history.
   const net = bought - sold;
   const reconciled = Math.abs(net - balance) < Math.max(1, balance * 0.001);
