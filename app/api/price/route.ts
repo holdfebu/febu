@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenPrice } from "@/lib/jupiter";
 import { TOKEN_MINT } from "@/lib/config";
+import { heartbeat } from "@/lib/presence";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,13 @@ async function cachedPrice(mint: string) {
 }
 
 export async function GET(req: NextRequest) {
+  // Each open tab polls this every 10s — use it as a presence heartbeat.
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  heartbeat(ip);
+
   const mint = req.nextUrl.searchParams.get("mint") || TOKEN_MINT;
   try {
     const price = await cachedPrice(mint);
