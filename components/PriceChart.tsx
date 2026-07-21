@@ -22,11 +22,23 @@ interface Candle {
 const RANGES = ["1H", "6H", "24H", "7D", "30D", "ALL"] as const;
 type Range = (typeof RANGES)[number];
 
-export default function PriceChart() {
+// How often to re-pull candles, matched to how fast each range's bars move.
+const REFRESH_MS: Record<Range, number> = {
+  "1H": 15_000,
+  "6H": 20_000,
+  "24H": 30_000,
+  "7D": 60_000,
+  "30D": 120_000,
+  ALL: 300_000,
+};
+
+export default function PriceChart({ price }: { price?: number | null }) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const priceRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const lastCandleRef = useRef<Candle | null>(null);
+  const firstOpenRef = useRef<number | null>(null);
 
   const [range, setRange] = useState<Range>("24H");
   const [meta, setMeta] = useState<{ dex: string; quote: string } | null>(null);
@@ -89,13 +101,13 @@ export default function PriceChart() {
     };
   }, []);
 
-  // Load candles whenever the range changes.
+  // Load candles on range change, then keep polling so the chart stays live.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    (async () => {
+    const load = async (silent: boolean) => {
       try {
         const res = await fetch(`/api/chart?range=${range}`);
         const json = await res.json();
@@ -104,6 +116,8 @@ export default function PriceChart() {
 
         const candles: Candle[] = json.candles ?? [];
         if (!candles.length) throw new Error("No candles for this range");
+        lastCandleRef.current = candles[candles.length - 1];
+        firstOpenRef.current = candles[0].open;
 
         priceRef.current?.setData(
           candles.map((c) => ({
@@ -124,7 +138,7 @@ export default function PriceChart() {
                 : "rgba(251,113,133,0.28)",
           }))
         );
-        chartRef.current?.timeScale().fitContent();
+        if (!silent) chartRef.current?.timeScale().fitContent();
 
         const first = candles[0].open;
         const last = candles[candles.length - 1].close;
@@ -134,16 +148,51 @@ export default function PriceChart() {
         });
         setMeta({ dex: json.dex, quote: json.quote });
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed");
+        // A failed background refresh shouldn't blank a working chart.
+        if (!cancelled && !silent) {
+          setError(e instanceof Error ? e.message : "Failed");
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !silent) setLoading(false);
       }
-    })();
+    };
+
+    load(false);
+    const id = setInterval(() => load(true), REFRESH_MS[range]);
 
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
   }, [range]);
+
+  // Between polls, ride the live price so the chart tracks the header exactly.
+  useEffect(() => {
+    if (price == null || !priceRef.current) return;
+    const c = lastCandleRef.current;
+    if (!c) return;
+
+    const updated: Candle = {
+      ...c,
+      close: price,
+      high: Math.max(c.high, price),
+      low: Math.min(c.low, price),
+    };
+    lastCandleRef.current = updated;
+    priceRef.current.update({
+      time: updated.time as UTCTimestamp,
+      open: updated.open,
+      high: updated.high,
+      low: updated.low,
+      close: updated.close,
+    });
+
+    const first = firstOpenRef.current;
+    setStats({
+      last: price,
+      changePct: first && first > 0 ? ((price - first) / first) * 100 : 0,
+    });
+  }, [price]);
 
   const up = (stats?.changePct ?? 0) >= 0;
 

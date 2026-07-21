@@ -20,11 +20,12 @@ interface Entry {
   candles: Candle[];
 }
 
-// Candles only close once per interval, so cache generously.
+// The newest candle keeps moving until it closes, so short timeframes need a
+// tight TTL to feel live; longer ones barely change between requests.
 const TTL: Record<Timeframe, number> = {
-  minute: 30_000,
-  hour: 120_000,
-  day: 600_000,
+  minute: 12_000,
+  hour: 60_000,
+  day: 300_000,
 };
 
 const cache = new Map<string, Entry>();

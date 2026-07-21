@@ -311,7 +311,7 @@ export default function Page() {
             onRefresh={refreshCohorts}
             refreshing={refreshingCohorts}
           />
-          <PriceChart />
+          <PriceChart price={price?.usdPrice ?? null} />
           <PoolsSection pools={data.pools ?? []} price={price} />
           <HoldersTable
             data={data}
