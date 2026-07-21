@@ -1,6 +1,7 @@
 import type { HoldersPayload } from "./holders";
 import { cohortForDays } from "./config";
 import { resolveEarliest, mapLimit } from "./holdtime";
+import { loadJSON, saveJSON } from "./persist";
 
 export interface Snapshot {
   at: number;
@@ -24,9 +25,13 @@ const MIN_RESOLVED_RATIO = 0.85;
 // How soon a failed capture attempt may be retried.
 const RETRY_AFTER_MS = 45_000;
 
-const snapshots: Snapshot[] = [];
+const snapshots: Snapshot[] = loadJSON<Snapshot[]>("snapshots", []);
 let capturing = false;
 let lastAttemptAt = 0;
+
+function persistSnapshots() {
+  saveJSON("snapshots", () => snapshots);
+}
 
 /* ---------------- Rank / balance history ----------------
  * Kept separate from the cohort snapshots above: ranks don't depend on
@@ -42,7 +47,7 @@ const RANK_KEEP_MS = 26 * 60 * 60 * 1000;
 const RANK_EVERY_MS = 5 * 60 * 1000;
 const RANK_DEPTH = 250;
 
-const rankSnapshots: RankSnapshot[] = [];
+const rankSnapshots: RankSnapshot[] = loadJSON<RankSnapshot[]>("ranks", []);
 
 export function recordRanks(holders: Array<{ owner: string; rank: number; amount: number }>) {
   const last = rankSnapshots[rankSnapshots.length - 1];
@@ -56,6 +61,8 @@ export function recordRanks(holders: Array<{ owner: string; rank: number; amount
 
   const cutoff = Date.now() - RANK_KEEP_MS;
   while (rankSnapshots.length && rankSnapshots[0].at < cutoff) rankSnapshots.shift();
+  // Rank history takes a full day to rebuild, so it matters most of all.
+  saveJSON("ranks", () => rankSnapshots);
 }
 
 /** Oldest snapshot at least 24h old, else the oldest we have. */
@@ -100,6 +107,7 @@ function record(s: Snapshot): void {
   snapshots.push(s);
   const cutoff = Date.now() - KEEP_MS;
   while (snapshots.length && snapshots[0].at < cutoff) snapshots.shift();
+  persistSnapshots();
 }
 
 /**

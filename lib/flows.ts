@@ -1,4 +1,5 @@
 import { TOKEN_MINT } from "./config";
+import { loadJSON, saveJSON } from "./persist";
 
 /**
  * Lifetime buy/sell totals per wallet, from Helius's parsed transaction feed.
@@ -19,9 +20,22 @@ const PAGE = 100; // Helius max per page
 const MAX_PAGES = 25; // safety cap: 2,500 txs per wallet
 const CONCURRENCY = 2;
 
-const flows = new Map<string, Flow>();
-let lastRun = 0;
+interface FlowFile {
+  lastRun: number;
+  entries: Record<string, Flow>;
+}
+const saved = loadJSON<FlowFile>("flows", { lastRun: 0, entries: {} });
+
+const flows = new Map<string, Flow>(Object.entries(saved.entries));
+let lastRun = saved.lastRun;
 let running = false;
+
+function persist() {
+  saveJSON("flows", () => ({
+    lastRun,
+    entries: Object.fromEntries(flows),
+  }));
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -115,13 +129,17 @@ export async function maybeRefreshFlows(
       while (idx < targets.length) {
         const t = targets[idx++];
         const flow = await fetchFlow(t.owner, t.amount).catch(() => null);
-        if (flow) flows.set(t.owner, flow);
+        if (flow) {
+          flows.set(t.owner, flow);
+          persist();
+        }
         await sleep(200);
       }
     });
 
     await Promise.all(workers);
     lastRun = Date.now();
+    persist();
   } finally {
     running = false;
   }

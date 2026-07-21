@@ -1,9 +1,16 @@
 import { getEarliestBlockTime } from "./helius";
+import { loadJSON, saveJSON } from "./persist";
 
 // Earliest-blocktime per token account. A first acquisition never moves, so
 // successful lookups are cached for the life of the process. Failures are not
 // cached, so transient RPC errors can be retried later.
-const cache = new Map<string, number>();
+const cache = new Map<string, number>(
+  Object.entries(loadJSON<Record<string, number>>("holdtime", {}))
+);
+
+function persist() {
+  saveJSON("holdtime", () => Object.fromEntries(cache));
+}
 // Dedupe concurrent lookups of the same account across simultaneous visitors.
 const inflight = new Map<string, Promise<number | null>>();
 
@@ -16,7 +23,10 @@ export async function resolveEarliest(account: string): Promise<number | null> {
 
   const task = getEarliestBlockTime(account)
     .then((t) => {
-      if (t != null) cache.set(account, t);
+      if (t != null) {
+        cache.set(account, t);
+        persist();
+      }
       return t;
     })
     // Isolate failures: one bad account must not fail a whole batch.
