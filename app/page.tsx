@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { HoldersPayload, Holder, BucketStat } from "@/lib/holders";
 import { TOKEN_MINT, AGE_COHORTS, cohortForDays } from "@/lib/config";
+import PriceChart from "@/components/PriceChart";
 import {
   shortAddr,
   fmtNumber,
@@ -310,6 +311,7 @@ export default function Page() {
             onRefresh={refreshCohorts}
             refreshing={refreshingCohorts}
           />
+          <PriceChart />
           <PoolsSection pools={data.pools ?? []} price={price} />
           <HoldersTable
             data={data}
@@ -391,6 +393,22 @@ function StatCards({ data, price }: { data: HoldersPayload; price: PriceInfo | n
         <div className="stat-label">Top 10 Hold</div>
         <div className="stat-value">{fmtPct(data.concentration.top10)}</div>
         <div className="stat-sub">Top 1: {fmtPct(data.concentration.top1)}</div>
+      </div>
+      {/* Token-level facts, not holder tiers — they belong up here. */}
+      <div className="card">
+        <div className="stat-label">Burned</div>
+        <div className="stat-value">{fmtPct(data.burned.pct)}</div>
+        <div className="stat-sub">
+          {price ? fmtUsd(data.burned.amount * price.usdPrice) : "—"} ·{" "}
+          {fmtNumber(data.burned.amount)}
+        </div>
+      </div>
+      <div className="card">
+        <div className="stat-label">Liquidity</div>
+        <div className="stat-value">{fmtPct(data.liquidity.pct)}</div>
+        <div className="stat-sub">
+          {data.liquidity.count} pools · {data.liquidity.venues.join(", ") || "—"}
+        </div>
       </div>
     </div>
   );
@@ -484,13 +502,19 @@ function BucketSection({
         {shown.map((b) => {
           const usd = price ? b.supplyUi * price.usdPrice : null;
           return (
-            <div className="bucket" key={b.key}>
+            <div
+              className="bucket"
+              key={b.key}
+              title={`${usd != null ? fmtUsd(usd) : "—"} held · ${fmtNumber(
+                b.supplyUi
+              )} tokens · ${fmtPct(b.holdersPct)} of holders`}
+            >
               <div className="top">
                 <div className="name">
                   <span className="tier-dot" style={{ background: b.color }} />
-                  {usdRangeLabel(b.min, b.max, marketCap)}
+                  {b.rangeLabel}
                 </div>
-                <span className="range">{b.rangeLabel}</span>
+                <span className="range">{fmtPct(b.supplyPct)}</span>
               </div>
               <div className="count">
                 {b.count.toLocaleString()}
@@ -498,11 +522,7 @@ function BucketSection({
                   current={b.count}
                   prev={prevBuckets ? prevBuckets[b.key] ?? 0 : null}
                 />
-                <small>{fmtPct(b.holdersPct)} of holders</small>
-              </div>
-              <div className="bucket-usd">
-                {usd != null ? fmtUsd(usd) : "—"}
-                <span className="bucket-usd-sub">held ({fmtPct(b.supplyPct)} of supply)</span>
+                <small>{usdRangeLabel(b.min, b.max, marketCap)}</small>
               </div>
               <div className="bar">
                 <span
@@ -512,80 +532,10 @@ function BucketSection({
                   }}
                 />
               </div>
-              <div className="legend">
-                <span>{fmtNumber(b.supplyUi)} tokens</span>
-                <span>
-                  {price ? `${fmtPrice(price.usdPrice)}/tkn` : ""}
-                </span>
-              </div>
             </div>
           );
         })}
 
-        {/* Burned — supply permanently removed */}
-        <div className="bucket special">
-          <div className="top">
-            <div className="name">
-              <span className="tier-dot" style={{ background: "#fb7185" }} />
-              Burned
-            </div>
-            <span className="range">supply</span>
-          </div>
-          <div className="count">
-            {fmtPct(burned.pct)}
-            <small>of launch supply</small>
-          </div>
-          <div className="bucket-usd">
-            {burnedUsd != null ? fmtUsd(burnedUsd) : "—"}
-            <span className="bucket-usd-sub">destroyed at current price</span>
-          </div>
-          <div className="bar">
-            <span
-              style={{
-                width: `${Math.min(100, burned.pct)}%`,
-                background: "#fb7185",
-              }}
-            />
-          </div>
-          <div className="legend">
-            <span>{fmtNumber(burned.amount)} tokens</span>
-            <span>1B at launch</span>
-          </div>
-        </div>
-
-        {/* Liquidity — supply sitting in AMM pools */}
-        <div className="bucket special">
-          <div className="top">
-            <div className="name">
-              <span className="tier-dot" style={{ background: "#38bdf8" }} />
-              Liquidity
-            </div>
-            <span className="range">
-              {liquidity.count} pool{liquidity.count === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className="count">
-            {fmtPct(liquidity.pct)}
-            <small>of supply in pools</small>
-          </div>
-          <div className="bucket-usd">
-            {liqUsd != null ? fmtUsd(liqUsd) : "—"}
-            <span className="bucket-usd-sub">
-              {liquidity.venues.length ? liquidity.venues.join(" · ") : "none found"}
-            </span>
-          </div>
-          <div className="bar">
-            <span
-              style={{
-                width: `${Math.min(100, liquidity.pct)}%`,
-                background: "#38bdf8",
-              }}
-            />
-          </div>
-          <div className="legend">
-            <span>{fmtNumber(liquidity.amount)} tokens</span>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -689,6 +639,7 @@ function PoolsSection({
   price: PriceInfo | null;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const [detail, setDetail] = useState<Record<string, PoolDetail | "loading">>({});
 
   // Load every pool's composition up front so the collapsed row can show the
@@ -718,6 +669,11 @@ function PoolsSection({
 
   if (!pools.length) return null;
 
+  // Most pools carry negligible liquidity; lead with the ones that matter.
+  const TOP = 3;
+  const shown = showAll ? pools : pools.slice(0, TOP);
+  const hidden = pools.length - shown.length;
+
   return (
     <div className="section">
       <div className="section-head">
@@ -727,7 +683,7 @@ function PoolsSection({
         </span>
       </div>
       <div className="pools-list">
-        {pools.map((p) => {
+        {shown.map((p) => {
           const d = detail[p.owner];
           const info = d && d !== "loading" ? d : null;
           // The paired side — usually SOL, but not always.
@@ -772,6 +728,16 @@ function PoolsSection({
           );
         })}
       </div>
+      {hidden > 0 && !showAll && (
+        <button className="load-btn" style={{ marginTop: 10 }} onClick={() => setShowAll(true)}>
+          Show {hidden} smaller pool{hidden === 1 ? "" : "s"}
+        </button>
+      )}
+      {showAll && pools.length > TOP && (
+        <button className="load-btn" style={{ marginTop: 10 }} onClick={() => setShowAll(false)}>
+          Show less
+        </button>
+      )}
     </div>
   );
 }
