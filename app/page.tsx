@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { HoldersPayload, Holder, BucketStat } from "@/lib/holders";
 import { TOKEN_MINT, AGE_COHORTS, cohortForDays } from "@/lib/config";
 import {
@@ -21,6 +21,18 @@ interface PriceInfo {
 }
 
 const PRICE_POLL_MS = 10_000;
+
+interface PoolDetail {
+  owner: string;
+  entries: Array<{
+    mint: string;
+    symbol: string;
+    amount: number;
+    usd: number | null;
+  }>;
+  tvl: number;
+  at: number;
+}
 
 type AgeState =
   | { status: "loading" }
@@ -647,6 +659,51 @@ function CohortSection({
   );
 }
 
+function PoolBreakdown({
+  detail,
+  venue,
+}: {
+  detail: PoolDetail | "loading" | undefined;
+  venue: string;
+}) {
+  if (!detail || detail === "loading") {
+    return <div className="pool-detail loading">Reading {venue} pool…</div>;
+  }
+  if (!detail.entries.length) {
+    return <div className="pool-detail loading">Couldn&apos;t read this pool.</div>;
+  }
+
+  return (
+    <div className="pool-detail">
+      <div className="pool-detail-head">
+        <span>{venue} pool composition</span>
+        <span className="pool-tvl">{fmtUsd(detail.tvl)} TVL</span>
+      </div>
+      <div className="pool-legs">
+        {detail.entries.map((e) => {
+          const share = detail.tvl > 0 ? ((e.usd ?? 0) / detail.tvl) * 100 : 0;
+          return (
+            <div className="pool-leg" key={e.mint}>
+              <div className="pool-leg-top">
+                <span className="pool-sym">{e.symbol}</span>
+                <span className="pool-usd">
+                  {e.usd != null ? fmtUsd(e.usd) : "—"}
+                </span>
+              </div>
+              <div className="bar">
+                <span style={{ width: `${share}%`, background: "#38bdf8" }} />
+              </div>
+              <div className="pool-leg-sub">
+                {fmtNumber(e.amount)} {e.symbol} · {fmtPct(share)} of pool
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function HoldersTable({
   data,
   ages,
@@ -670,6 +727,37 @@ function HoldersTable({
 
   const loadedCount = Object.keys(ages).length;
   const hasMore = loadedCount < data.holders.length;
+
+  // Pool composition, fetched on demand when an LP badge is clicked.
+  const [openPool, setOpenPool] = useState<string | null>(null);
+  const [poolData, setPoolData] = useState<Record<string, PoolDetail | "loading">>(
+    {}
+  );
+
+  const togglePool = useCallback(
+    async (owner: string) => {
+      if (openPool === owner) {
+        setOpenPool(null);
+        return;
+      }
+      setOpenPool(owner);
+      if (poolData[owner]) return;
+
+      setPoolData((p) => ({ ...p, [owner]: "loading" }));
+      try {
+        const res = await fetch(`/api/pool?owner=${owner}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "failed");
+        setPoolData((p) => ({ ...p, [owner]: json as PoolDetail }));
+      } catch {
+        setPoolData((p) => ({
+          ...p,
+          [owner]: { owner, entries: [], tvl: 0, at: Date.now() },
+        }));
+      }
+    },
+    [openPool, poolData]
+  );
 
   return (
     <div className="section">
@@ -704,7 +792,8 @@ function HoldersTable({
                 const b = bucketMap[h.bucketKey];
                 const age = ages[h.tokenAccount];
                 return (
-                  <tr key={h.owner}>
+                  <Fragment key={h.owner}>
+                  <tr>
                     <td className="rank">{h.rank}</td>
                     <td>
                       <a
@@ -726,7 +815,15 @@ function HoldersTable({
                           ×{h.accounts}
                         </span>
                       )}
-                      {h.pool && <span className="lp-badge">LP · {h.pool}</span>}
+                      {h.pool && (
+                        <button
+                          className={`lp-badge${openPool === h.owner ? " open" : ""}`}
+                          onClick={() => togglePool(h.owner)}
+                          title="Show pool composition"
+                        >
+                          LP · {h.pool} {openPool === h.owner ? "▴" : "▾"}
+                        </button>
+                      )}
                     </td>
                     <td className="num">{fmtNumber(h.amount)}</td>
                     <td className="num">{fmtPct(h.percentage)}</td>
@@ -759,6 +856,17 @@ function HoldersTable({
                       )}
                     </td>
                   </tr>
+                  {h.pool && openPool === h.owner && (
+                    <tr className="pool-row">
+                      <td colSpan={7}>
+                        <PoolBreakdown
+                          detail={poolData[h.owner]}
+                          venue={h.pool}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>

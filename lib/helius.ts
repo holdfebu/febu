@@ -134,6 +134,59 @@ export async function getAllTokenAccounts(
   return out;
 }
 
+export interface OwnedTokenBalance {
+  mint: string;
+  amount: number; // ui amount
+  decimals: number;
+}
+
+/** Every token balance held by an owner — used to read both sides of a pool. */
+export async function getTokenBalancesByOwner(
+  owner: string
+): Promise<OwnedTokenBalance[]> {
+  const out: OwnedTokenBalance[] = [];
+
+  // Pools may hold legacy SPL or Token-2022 accounts, so ask for both.
+  const programs = [
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+  ];
+
+  for (const programId of programs) {
+    const res = await heliusRpc<{
+      value: Array<{
+        account: {
+          data: {
+            parsed: {
+              info: {
+                mint: string;
+                tokenAmount: { uiAmount: number | null; decimals: number };
+              };
+            };
+          };
+        };
+      }>;
+    }>("getTokenAccountsByOwner", [
+      owner,
+      { programId },
+      { encoding: "jsonParsed" },
+    ]).catch(() => null);
+
+    for (const a of res?.value ?? []) {
+      const info = a.account.data.parsed.info;
+      const amount = info.tokenAmount.uiAmount ?? 0;
+      if (amount <= 0) continue;
+      out.push({
+        mint: info.mint,
+        amount,
+        decimals: info.tokenAmount.decimals,
+      });
+    }
+  }
+
+  return out;
+}
+
 /**
  * For each address, which program owns that account (null if the account
  * doesn't exist). Batched 100 at a time — the RPC maximum.

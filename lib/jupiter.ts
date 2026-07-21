@@ -8,6 +8,26 @@ export interface TokenPrice {
   at: number; // unix ms when fetched
 }
 
+/** USD price for several mints at once. Missing mints are simply absent. */
+export async function getTokenPrices(
+  mints: string[]
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (!mints.length) return out;
+
+  const res = await fetch(
+    `https://lite-api.jup.ag/price/v3?ids=${mints.join(",")}`,
+    { cache: "no-store", headers: { Accept: "application/json" } }
+  );
+  if (!res.ok) return out;
+
+  const json = (await res.json()) as Record<string, { usdPrice?: number } | null>;
+  for (const [mint, row] of Object.entries(json)) {
+    if (row && typeof row.usdPrice === "number") out.set(mint, row.usdPrice);
+  }
+  return out;
+}
+
 export async function getTokenPrice(mint: string): Promise<TokenPrice> {
   const res = await fetch(`https://lite-api.jup.ag/price/v3?ids=${mint}`, {
     cache: "no-store",
