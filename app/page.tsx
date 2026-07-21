@@ -669,26 +669,30 @@ function PoolsSection({
   const [open, setOpen] = useState<string | null>(null);
   const [detail, setDetail] = useState<Record<string, PoolDetail | "loading">>({});
 
-  const toggle = useCallback(
-    async (owner: string) => {
-      if (open === owner) return setOpen(null);
-      setOpen(owner);
-      if (detail[owner]) return;
-      setDetail((p) => ({ ...p, [owner]: "loading" }));
-      try {
-        const res = await fetch(`/api/pool?owner=${owner}`);
-        const json = await res.json();
-        if (!res.ok) throw new Error();
-        setDetail((p) => ({ ...p, [owner]: json as PoolDetail }));
-      } catch {
-        setDetail((p) => ({
-          ...p,
-          [owner]: { owner, entries: [], tvl: 0, at: Date.now() },
-        }));
+  // Load every pool's composition up front so the collapsed row can show the
+  // pool's real total, not just the FEBU leg. Responses are cached server-side.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const p of pools) {
+        try {
+          const res = await fetch(`/api/pool?owner=${p.owner}`);
+          const json = await res.json();
+          if (cancelled || !res.ok) continue;
+          setDetail((d) => ({ ...d, [p.owner]: json as PoolDetail }));
+        } catch {
+          /* leave it unresolved; the row falls back to the FEBU leg */
+        }
       }
-    },
-    [open, detail]
-  );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pools]);
+
+  const toggle = useCallback((owner: string) => {
+    setOpen((cur) => (cur === owner ? null : owner));
+  }, []);
 
   if (!pools.length) return null;
 
@@ -701,7 +705,13 @@ function PoolsSection({
         </span>
       </div>
       <div className="pools-list">
-        {pools.map((p) => (
+        {pools.map((p) => {
+          const d = detail[p.owner];
+          const info = d && d !== "loading" ? d : null;
+          // The paired side — usually SOL, but not always.
+          const pair = info?.entries.find((e) => e.symbol !== "FEBU");
+          const febuLeg = info?.entries.find((e) => e.symbol === "FEBU");
+          return (
           <div className="pool-card" key={p.owner}>
             <button className="pool-card-head" onClick={() => toggle(p.owner)}>
               <span className="pool-venue">{p.pool}</span>
@@ -715,12 +725,19 @@ function PoolsSection({
                 {shortAddr(p.owner, 4, 4)}
               </a>
               <span className="pool-rank">rank #{p.rank}</span>
-              <span className="pool-amt">
-                {fmtNumber(p.amount)} <small>febu</small>
-              </span>
-              <span className="pool-pct">{fmtPct(p.percentage)}</span>
-              <span className="pool-val">
-                {price ? fmtUsd(p.amount * price.usdPrice) : "—"}
+              <span className="pool-pct">{fmtPct(p.percentage)} of supply</span>
+              <span className="pool-total">
+                <span className="pool-total-usd">
+                  {info
+                    ? fmtUsd(info.tvl)
+                    : price
+                      ? fmtUsd(p.amount * price.usdPrice)
+                      : "—"}
+                </span>
+                <span className="pool-total-legs">
+                  {fmtNumber(febuLeg ? febuLeg.amount : p.amount)} FEBU
+                  {pair ? ` · ${fmtNumber(pair.amount)} ${pair.symbol}` : ""}
+                </span>
               </span>
               <span className="pool-caret">{open === p.owner ? "▴" : "▾"}</span>
             </button>
@@ -730,7 +747,8 @@ function PoolsSection({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
