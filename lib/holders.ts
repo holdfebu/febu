@@ -13,6 +13,10 @@ export interface Holder {
   bucketKey: string;
   /** Protocol name if this address is a liquidity pool vault, else null. */
   pool: string | null;
+  /** Pair stats from DexScreener when this holder is a pool. */
+  poolLiquidityUsd?: number | null;
+  poolVolume24h?: number | null;
+  poolQuote?: string | null;
   /** Rank/balance movement vs ~24h ago, attached by the API route. */
   prevRank?: number | null;
   rankDelta?: number | null;
@@ -85,9 +89,9 @@ const TTL_MS = 60_000;
 // A "fresh" request still reuses a very recent scan. Without this floor, a
 // crowd hitting Refresh would each kick off their own full chain scan.
 const FORCE_MIN_AGE_MS = 15_000;
-// How deep to look for liquidity pools. Pools hold large balances, so the
-// top slice catches them all without scanning every holder.
-const POOL_SCAN_DEPTH = 2000;
+// Pool detection is now a single free DexScreener lookup, so there's no cost
+// reason to limit depth — check every holder.
+const POOL_SCAN_DEPTH = Number.MAX_SAFE_INTEGER;
 // pump.fun tokens launch with a fixed 1B supply; burns reduce it from there.
 const LAUNCH_SUPPLY = 1_000_000_000;
 
@@ -197,9 +201,16 @@ async function buildPayload(mint: string): Promise<HoldersPayload> {
   // Pools always sit near the top by balance, so classifying the largest
   // holders catches them all in a couple of RPC calls.
   const poolMap = await classifyPools(
+    mint,
     holdersAll.slice(0, POOL_SCAN_DEPTH).map((h) => h.owner)
   );
-  for (const h of holdersAll) h.pool = poolMap.get(h.owner) ?? null;
+  for (const h of holdersAll) {
+    const info = poolMap.get(h.owner);
+    h.pool = info ? info.venue : null;
+    h.poolLiquidityUsd = info ? info.liquidityUsd : null;
+    h.poolVolume24h = info ? info.volume24h : null;
+    h.poolQuote = info ? info.quoteSymbol : null;
+  }
 
   const totalHolders = holdersAll.length;
 
