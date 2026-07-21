@@ -13,6 +13,11 @@ export interface Holder {
   bucketKey: string;
   /** Protocol name if this address is a liquidity pool vault, else null. */
   pool: string | null;
+  /** Rank/balance movement vs ~24h ago, attached by the API route. */
+  prevRank?: number | null;
+  rankDelta?: number | null;
+  balancePct?: number | null;
+  isNew?: boolean;
 }
 
 export interface BucketStat {
@@ -47,6 +52,8 @@ export interface HoldersPayload {
   liquidity: { amount: number; pct: number; count: number; venues: string[] };
   /** Every detected pool, ranked — including any below the table cut-off. */
   pools: Holder[];
+  /** Age of the rank baseline in seconds (null until history exists). */
+  rankWindowSeconds?: number | null;
   concentration: {
     top1: number;
     top10: number;

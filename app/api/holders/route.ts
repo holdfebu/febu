@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeHolders } from "@/lib/holders";
-import { getBaseline, maybeCapture } from "@/lib/history";
+import {
+  getBaseline,
+  maybeCapture,
+  recordRanks,
+  movementFor,
+  rankWindowSeconds,
+} from "@/lib/history";
 import { TOKEN_MINT } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -15,13 +21,27 @@ export async function GET(req: NextRequest) {
     const data = await computeHolders(mint, Math.min(Math.max(limit, 1), 2000), force);
 
     // Record history in the background — never block the response.
-    // Re-read at the full top-100 (a cache hit): `data` is trimmed to the
-    // caller's ?limit=, and snapshotting that would record a partial baseline.
-    void computeHolders(mint, 100)
-      .then(maybeCapture)
+    // Re-read at full depth (a cache hit): `data` is trimmed to the caller's
+    // ?limit=, and snapshotting that would record a partial baseline.
+    void computeHolders(mint, 250)
+      .then((full) => {
+        recordRanks(full.holders);
+        return maybeCapture(full);
+      })
       .catch(() => {});
 
-    return NextResponse.json({ ...data, baseline: getBaseline() });
+    // Attach per-wallet movement versus the ~24h baseline.
+    const holders = data.holders.map((h) => ({
+      ...h,
+      ...movementFor(h.owner, h.rank, h.amount),
+    }));
+
+    return NextResponse.json({
+      ...data,
+      holders,
+      baseline: getBaseline(),
+      rankWindowSeconds: rankWindowSeconds(),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

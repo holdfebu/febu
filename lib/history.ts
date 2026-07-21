@@ -28,6 +28,74 @@ const snapshots: Snapshot[] = [];
 let capturing = false;
 let lastAttemptAt = 0;
 
+/* ---------------- Rank / balance history ----------------
+ * Kept separate from the cohort snapshots above: ranks don't depend on
+ * hold-time lookups, so they must not be gated on cohort completeness.
+ */
+interface RankSnapshot {
+  at: number;
+  entries: Record<string, { r: number; a: number }>; // owner -> rank, amount
+}
+
+const RANK_TARGET_AGE_MS = 24 * 60 * 60 * 1000; // compare against ~24h ago
+const RANK_KEEP_MS = 26 * 60 * 60 * 1000;
+const RANK_EVERY_MS = 5 * 60 * 1000;
+const RANK_DEPTH = 250;
+
+const rankSnapshots: RankSnapshot[] = [];
+
+export function recordRanks(holders: Array<{ owner: string; rank: number; amount: number }>) {
+  const last = rankSnapshots[rankSnapshots.length - 1];
+  if (last && Date.now() - last.at < RANK_EVERY_MS) return;
+
+  const entries: RankSnapshot["entries"] = {};
+  for (const h of holders.slice(0, RANK_DEPTH)) {
+    entries[h.owner] = { r: h.rank, a: h.amount };
+  }
+  rankSnapshots.push({ at: Date.now(), entries });
+
+  const cutoff = Date.now() - RANK_KEEP_MS;
+  while (rankSnapshots.length && rankSnapshots[0].at < cutoff) rankSnapshots.shift();
+}
+
+/** Oldest snapshot at least 24h old, else the oldest we have. */
+function rankBaseline(): RankSnapshot | null {
+  if (!rankSnapshots.length) return null;
+  const target = Date.now() - RANK_TARGET_AGE_MS;
+  let best: RankSnapshot | null = null;
+  for (const s of rankSnapshots) {
+    if (s.at <= target) best = s;
+    else break;
+  }
+  return best ?? rankSnapshots[0];
+}
+
+export interface Movement {
+  prevRank: number | null;
+  rankDelta: number | null; // positive = moved up the leaderboard
+  balancePct: number | null;
+  isNew: boolean;
+}
+
+export function movementFor(owner: string, rank: number, amount: number): Movement {
+  const base = rankBaseline();
+  const prev = base?.entries[owner];
+  if (!base) return { prevRank: null, rankDelta: null, balancePct: null, isNew: false };
+  if (!prev) return { prevRank: null, rankDelta: null, balancePct: null, isNew: true };
+  return {
+    prevRank: prev.r,
+    rankDelta: prev.r - rank, // #10 -> #50 gives -40
+    balancePct: prev.a > 0 ? ((amount - prev.a) / prev.a) * 100 : null,
+    isNew: false,
+  };
+}
+
+/** How much history we actually have, so the UI can label the window. */
+export function rankWindowSeconds(): number | null {
+  const base = rankBaseline();
+  return base ? Math.round((Date.now() - base.at) / 1000) : null;
+}
+
 function record(s: Snapshot): void {
   snapshots.push(s);
   const cutoff = Date.now() - KEEP_MS;

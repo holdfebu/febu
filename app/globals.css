@@ -934,3 +934,30 @@ tr.pool-row:hover {
     display: none;
   }
 }
+
+/* --- Leaderboard rank movement --- */
+td.rank {
+  white-space: nowrap;
+  width: 76px;
+}
+.rank-move {
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.rank-move.up {
+  color: var(--green);
+}
+.rank-move.down {
+  color: var(--red);
+}
+.rank-move.flat {
+  color: var(--text-faint);
+  font-weight: 500;
+}
+.rank-move.new {
+  color: var(--yellow);
+  font-size: 9.5px;
+  letter-spacing: 0.3px;
+}

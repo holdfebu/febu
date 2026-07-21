@@ -659,6 +659,28 @@ function CohortSection({
   );
 }
 
+// Leaderboard movement vs ~24h ago. Positive delta = climbed the ranks.
+function RankMove({ holder }: { holder: Holder }) {
+  if (holder.isNew) return <span className="rank-move new">NEW</span>;
+  const d = holder.rankDelta;
+  if (d == null) return null;
+  if (d === 0) return <span className="rank-move flat">—</span>;
+  const up = d > 0;
+  return (
+    <span
+      className={`rank-move ${up ? "up" : "down"}`}
+      title={`was #${holder.prevRank}${
+        holder.balancePct != null
+          ? ` · balance ${holder.balancePct >= 0 ? "+" : ""}${holder.balancePct.toFixed(1)}%`
+          : ""
+      }`}
+    >
+      {up ? "▲" : "▼"}
+      {Math.abs(d)}
+    </span>
+  );
+}
+
 function PoolsSection({
   pools,
   price,
@@ -862,6 +884,9 @@ function HoldersTable({
           <span className="hint">
             of {data.totalHolders.toLocaleString()} total ·{" "}
             {loadedCount.toLocaleString()} hold times loaded
+            {data.rankWindowSeconds != null
+              ? ` · movement vs ${fmtDuration(data.rankWindowSeconds)} ago`
+              : ""}
           </span>
           <button className="mini-refresh" onClick={onRefresh} disabled={refreshing}>
             {refreshing ? "↻ …" : "↻ Refresh"}
@@ -889,7 +914,10 @@ function HoldersTable({
                 return (
                   <Fragment key={h.owner}>
                   <tr>
-                    <td className="rank">{h.rank}</td>
+                    <td className="rank">
+                      {h.rank}
+                      <RankMove holder={h} />
+                    </td>
                     <td>
                       <a
                         className="addr"
