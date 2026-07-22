@@ -1128,3 +1128,22 @@ td.rank {
   color: var(--text-dim);
   white-space: nowrap;
 }
+
+/* --- Runner link in the header --- */
+.runner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(12px);
+}
+.runner-btn:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
