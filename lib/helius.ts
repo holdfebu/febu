@@ -237,3 +237,33 @@ export async function getEarliestBlockTime(
 
   return earliest;
 }
+
+// --- Swap broadcasting helpers ---
+
+/** Broadcast a signed, serialized transaction. Returns the signature. */
+export async function sendRawTransaction(base64Tx: string): Promise<string> {
+  return heliusRpc<string>("sendTransaction", [
+    base64Tx,
+    { encoding: "base64", skipPreflight: true, maxRetries: 3 },
+  ]);
+}
+
+export interface SigStatus {
+  confirmationStatus: string | null;
+  err: unknown;
+  slot: number | null;
+}
+
+/** Confirmation status for a signature, or null if not yet seen. */
+export async function getSignatureStatus(sig: string): Promise<SigStatus | null> {
+  const res = await heliusRpc<{
+    value: Array<{
+      confirmationStatus: string | null;
+      err: unknown;
+      slot: number;
+    } | null>;
+  }>("getSignatureStatuses", [[sig], { searchTransactionHistory: true }]);
+  const v = res.value?.[0];
+  if (!v) return null;
+  return { confirmationStatus: v.confirmationStatus, err: v.err, slot: v.slot };
+}

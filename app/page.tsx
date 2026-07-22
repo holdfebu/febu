@@ -4,6 +4,13 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { HoldersPayload, Holder, BucketStat } from "@/lib/holders";
 import { TOKEN_MINT, AGE_COHORTS, cohortForDays } from "@/lib/config";
 import PriceChart from "@/components/PriceChart";
+import dynamic from "next/dynamic";
+
+// Wallet stack is client-only; never server-render it.
+const SwapPanel = dynamic(() => import("@/components/SwapPanel"), {
+  ssr: false,
+  loading: () => <div className="swap-card swap-loading">loading swap…</div>,
+});
 import {
   shortAddr,
   fmtNumber,
@@ -274,6 +281,11 @@ export default function Page() {
           </button>
         </div>
       </header>
+
+      {/* Swap is independent of the holder scan — always available. */}
+      <div className="swap-mount">
+        <SwapPanel />
+      </div>
 
       {loading && !data && (
         <div className="state">
