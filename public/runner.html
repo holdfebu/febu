@@ -285,7 +285,7 @@
       </div>
     </div>
 
-    <script src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="/vendor/lightweight-charts.standalone.production.js"></script>
 
     <script>
       (() => {
@@ -331,6 +331,27 @@
       }
       const pad = (n) => String(n).padStart(2, "0");
       const short = (a) => a ? a.slice(0, 4) + "…" + a.slice(-4) : "—";
+      // ---- XSS defense: token name/symbol/description/links come from the
+      // public DexScreener feed, so anyone can mint a token to inject markup.
+      // Escape all of it before it touches innerHTML.
+      const esc = (s) =>
+        String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      // Only allow http/https URLs; anything else (javascript:, data:, …) is dropped.
+      const safeUrl = (u) => {
+        try {
+          const url = new URL(String(u), location.origin);
+          return url.protocol === "http:" || url.protocol === "https:"
+            ? url.href
+            : "";
+        } catch {
+          return "";
+        }
+      };
       function handleOf(u) {
         try {
           const seg = new URL(u).pathname.split("/").filter(Boolean);
@@ -341,9 +362,10 @@
       }
       function socialsHTML(a) {
         const p = [];
-        if (a.twitter) p.push(`<a class="soc" href="${a.twitter}" target="_blank" rel="noopener" onclick="event.stopPropagation()">𝕏 ${handleOf(a.twitter)}</a>`);
-        if (a.telegram) p.push(`<a class="soc" href="${a.telegram}" target="_blank" rel="noopener" onclick="event.stopPropagation()">✈ tg</a>`);
-        if (a.website) p.push(`<a class="soc" href="${a.website}" target="_blank" rel="noopener" onclick="event.stopPropagation()">◍ site</a>`);
+        const tw = safeUrl(a.twitter), tg = safeUrl(a.telegram), ws = safeUrl(a.website);
+        if (tw) p.push(`<a class="soc" href="${esc(tw)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">𝕏 ${esc(handleOf(a.twitter))}</a>`);
+        if (tg) p.push(`<a class="soc" href="${esc(tg)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">✈ tg</a>`);
+        if (ws) p.push(`<a class="soc" href="${esc(ws)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">◍ site</a>`);
         return p.length ? `<div class="socials">${p.join("")}</div>` : "";
       }
 
@@ -357,15 +379,15 @@
         el.dataset.mc = a.marketCap ?? "";
         el._alert = a;
         el.onclick = () => (selectedAddr === a.tokenAddress ? closeDetail() : openDetail(a));
-        const sym = a.symbol ? `<span class="sym">$${a.symbol}</span> ` : "";
-        const icon = `<img class="icon" src="${a.icon || ""}" onerror="this.style.visibility='hidden'"/>`;
+        const sym = a.symbol ? `<span class="sym">$${esc(a.symbol)}</span> ` : "";
+        const icon = `<img class="icon" src="${esc(safeUrl(a.icon))}" onerror="this.style.visibility='hidden'"/>`;
         if (featured) {
           el.innerHTML = `
             <span class="tag">newest signal</span>
             <div class="top">${icon}
               <div class="body">
-                <div class="name">${sym}${a.name || ""}</div>
-                <div class="desc">${a.description || a.tokenAddress}</div>
+                <div class="name">${sym}${esc(a.name || "")}</div>
+                <div class="desc">${esc(a.description || a.tokenAddress)}</div>
                 <div class="time" data-ts="${a.ts}">${ago(a.ts)}</div>
                 ${socialsHTML(a)}
               </div>
@@ -380,7 +402,7 @@
             </div>`;
         } else {
           el.innerHTML = `${icon}
-            <div class="body"><div class="name">${sym || (a.name || a.tokenAddress.slice(0,6)+"…")}</div></div>
+            <div class="body"><div class="name">${sym || esc(a.name || a.tokenAddress.slice(0,6)+"…")}</div></div>
             <div class="mc"><div class="val">${money(a.marketCap)}</div></div>`;
         }
         return el;
@@ -523,7 +545,7 @@
         el.innerHTML = `
           <div class="chartcard">
             <div class="charthead">
-              <span class="csym">$${chartCtx.symbol}</span>
+              <span class="csym">$${esc(chartCtx.symbol)}</span>
               <div class="tfs">${[1, 5, 15, 30]
                 .map((t) => `<button data-tf="${t}"${t === currentTF ? ' class="on"' : ""}>${t}m</button>`)
                 .join("")}</div>
@@ -761,7 +783,7 @@
           if (!b) continue;
           if (wallet[chain]) {
             b.classList.add("on");
-            b.innerHTML = `◉ ${short(wallet[chain])} <span class="wx" onclick="event.stopPropagation();disconnectWallet('${chain}')">✕</span>`;
+            b.innerHTML = `◉ ${esc(short(wallet[chain]))} <span class="wx" onclick="event.stopPropagation();disconnectWallet('${chain}')">✕</span>`;
           } else {
             b.classList.remove("on");
             b.innerHTML = chain === "solana" ? "⊙ connect phantom" : "⊙ connect robinhood";
