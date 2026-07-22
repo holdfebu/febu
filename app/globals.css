@@ -1134,16 +1134,16 @@ td.rank {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text);
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-faint);
   padding: 9px 16px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
-  backdrop-filter: blur(12px);
 }
 .runner-btn:hover {
-  border-color: var(--yellow);
-  color: var(--yellow);
+  border-color: var(--border);
+  color: var(--text-dim);
+  background: var(--panel);
 }
