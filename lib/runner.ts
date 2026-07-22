@@ -39,21 +39,42 @@ interface RunnerFile {
   feed: Alert[];
   seen: string[];
 }
-const savedState = loadJSON<RunnerFile>("runner", { feed: [], seen: [] });
 
-const seen = new Set<string>(savedState.seen);
-const feed: Alert[] = [...savedState.feed];
-let primed = seen.size > 0;
-let started = false;
-let working = false;
+type Send = (line: string) => void;
+
+interface RunnerState {
+  feed: Alert[];
+  seen: Set<string>;
+  clients: Set<Send>;
+  primed: boolean;
+  started: boolean;
+  working: boolean;
+}
+
+// instrumentation.ts and route handlers are bundled into separate module
+// graphs in production, so plain module-level state would exist twice: the
+// watcher would fill one copy while the SSE route reads another, empty one.
+// Anchoring the state on globalThis makes every copy share it.
+const g = globalThis as unknown as { __febuRunner?: RunnerState };
+if (!g.__febuRunner) {
+  const savedState = loadJSON<RunnerFile>("runner", { feed: [], seen: [] });
+  g.__febuRunner = {
+    feed: [...savedState.feed],
+    seen: new Set(savedState.seen),
+    clients: new Set(),
+    primed: savedState.seen.length > 0,
+    started: false,
+    working: false,
+  };
+}
+const state = g.__febuRunner;
+const feed = state.feed;
+const seen = state.seen;
+const clients = state.clients;
 
 function save() {
   saveJSON("runner", () => ({ feed, seen: [...seen] }));
 }
-
-// ---- SSE clients ----
-type Send = (line: string) => void;
-const clients = new Set<Send>();
 
 export function addClient(send: Send): () => void {
   // replay history oldest-first so the page fills instantly
@@ -168,10 +189,10 @@ function pickLink(
 async function processProfiles(profiles: Profile[]) {
   const wanted = profiles.filter((p) => CHAINS.has(p.chainId));
   const fresh = [...wanted].reverse().filter((p) => !seen.has(p.tokenAddress));
-  if (!fresh.length || working) return;
-  working = true;
+  if (!fresh.length || state.working) return;
+  state.working = true;
 
-  const silent = !primed || fresh.length > BURST;
+  const silent = !state.primed || fresh.length > BURST;
   try {
     for (const p of fresh) {
       if (seen.has(p.tokenAddress)) continue;
@@ -207,9 +228,9 @@ async function processProfiles(profiles: Profile[]) {
         `runner ${silent ? "seed" : "NEW "} [${alert.chainId}] ${alert.symbol || "?"} ${alert.tokenAddress}`
       );
     }
-    primed = true;
+    state.primed = true;
   } finally {
-    working = false;
+    state.working = false;
   }
 }
 
@@ -333,8 +354,8 @@ async function refreshLive() {
 
 /** Start the watcher exactly once per process. */
 export function startRunner() {
-  if (started) return;
-  started = true;
+  if (state.started) return;
+  state.started = true;
   console.log("runner starting: watching", [...CHAINS].join(", "));
   connectWS();
   void fallbackPoll();
