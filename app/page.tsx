@@ -261,9 +261,9 @@ export default function Page() {
           </div>
         </div>
         <div className="header-right">
-          <a className="runner-btn" href="/runner">
+          <span className="runner-btn disabled" title="Coming soon">
             ✦ Runner
-          </a>
+          </span>
           <PricePill price={price} stale={priceStale} />
           <button
             className="refresh"

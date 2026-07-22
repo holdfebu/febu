@@ -1142,8 +1142,8 @@ td.rank {
   font-size: 13px;
   font-weight: 600;
 }
-.runner-btn:hover {
-  border-color: var(--border);
-  color: var(--text-dim);
-  background: var(--panel);
+.runner-btn.disabled {
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.55;
 }
