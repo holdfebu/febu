@@ -1151,8 +1151,16 @@ td.rank {
 /* --- Swap widget --- */
 .swap-mount {
   display: flex;
-  justify-content: center;
-  margin: 4px 0 30px;
+  justify-content: flex-end;
+  margin: 0 0 24px;
+}
+@media (max-width: 560px) {
+  .swap-mount {
+    justify-content: center;
+  }
+  .swap-card {
+    max-width: none;
+  }
 }
 .swap-card {
   width: 100%;
