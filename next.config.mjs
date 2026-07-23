@@ -13,6 +13,8 @@ const runnerCSP = [
   "img-src 'self' https: data:",
   "font-src 'self'",
   "connect-src 'self'",
+  // DexScreener chart embed fallback for tokens GeckoTerminal hasn't indexed.
+  "frame-src https://dexscreener.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'none'",

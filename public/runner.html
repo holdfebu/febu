@@ -235,6 +235,7 @@
       .tfs button.on { color: var(--phosphor); border-color: rgba(74,222,128,.5); background: rgba(74,222,128,0.08); }
       .chartwrap { position: relative; height: 300px; }
       #pricechart { width: 100%; height: 100%; display: block; }
+      .dexembed { width: 100%; height: 100%; border: 0; display: block; }
       .chartmsg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 12px; letter-spacing: 1.5px; }
       .nochart { margin-top: 14px; text-align: center; color: var(--dim); font-size: 12px; letter-spacing: 1.5px; padding: 30px 0; }
 
@@ -478,8 +479,25 @@
         return document.getElementById(chain === "solana" ? "info-right" : "info-left");
       }
 
+      // Move a clicked token into the middle "featured" slot for its chain,
+      // bumping the current feature back to the rail.
+      function promoteToFeature(a) {
+        const chain = a.chainId || "solana";
+        const feat = document.getElementById("feature-" + chain);
+        const rail = document.getElementById("rail-" + chain);
+        if (!feat) return;
+        const cur = feat.querySelector(".card");
+        if (cur && cur.dataset.addr === a.tokenAddress) return; // already featured
+        const dup = rail.querySelector(`.card[data-addr="${CSS.escape(a.tokenAddress)}"]`);
+        if (dup) dup.remove();
+        if (cur) { rail.prepend(buildCard(cur._alert, false)); cur.remove(); }
+        feat.appendChild(buildCard(a, true));
+        updateCount(chain);
+      }
+
       async function openDetail(a) {
         selectedAddr = a.tokenAddress;
+        promoteToFeature(a);
         highlight();
         const chain = a.chainId || "solana";
         const infoEl = sideFor(chain);
@@ -587,8 +605,20 @@
         if (!host) return;
         if (tvChart) { tvChart.remove(); tvChart = null; tvSeries = null; }
         if (!candles.length) {
-          if (msg) msg.textContent = "◇ no candles yet — pair is brand new";
-          if (stat) { stat.textContent = "—"; stat.style.color = "var(--dim)"; }
+          // GeckoTerminal hasn't indexed this pool yet (common for brand-new
+          // Robinhood pairs). Fall back to DexScreener's own chart, which
+          // always has data for anything in the feed.
+          if (chartCtx && chartCtx.pool) {
+            const src =
+              `https://dexscreener.com/${chartCtx.chain}/${encodeURIComponent(chartCtx.pool)}` +
+              `?embed=1&theme=dark&info=0&trades=0&chartLeftToolbar=0&tabs=0&chartDefaultOnMobile=1`;
+            host.innerHTML = `<iframe class="dexembed" src="${esc(src)}" title="price chart" loading="lazy"></iframe>`;
+            if (msg) msg.textContent = "";
+            if (stat) { stat.textContent = "via dexscreener"; stat.style.color = "var(--dim)"; }
+          } else {
+            if (msg) msg.textContent = "◇ no chart available";
+            if (stat) { stat.textContent = "—"; stat.style.color = "var(--dim)"; }
+          }
           return;
         }
         if (msg) msg.textContent = "";
