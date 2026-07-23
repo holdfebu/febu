@@ -1379,3 +1379,51 @@ td.rank {
   background: var(--panel) !important;
   border: 1px solid var(--border);
 }
+
+/* --- Chart + swap side by side --- */
+.chart-row {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 30px;
+}
+.chart-row > .section {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.swap-col {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+}
+.swap-col .swap-card {
+  max-width: none;
+  width: 100%;
+  /* a touch more compact so it sits neatly beside the chart */
+  padding: 16px;
+}
+.swap-col .swap-amount,
+.swap-col .swap-out {
+  font-size: 22px;
+}
+.swap-col .swap-field {
+  padding: 10px 12px;
+}
+.swap-col .swap-btn {
+  padding: 12px;
+  font-size: 14px;
+}
+/* Stack under the chart on narrower screens, swap below */
+@media (max-width: 1000px) {
+  .chart-row {
+    flex-direction: column;
+  }
+  .swap-col {
+    width: 100%;
+  }
+  .swap-col .swap-card {
+    max-width: 460px;
+    margin: 0 auto;
+  }
+}

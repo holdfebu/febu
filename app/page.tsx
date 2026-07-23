@@ -282,11 +282,6 @@ export default function Page() {
         </div>
       </header>
 
-      {/* Swap is independent of the holder scan — always available. */}
-      <div className="swap-mount">
-        <SwapPanel />
-      </div>
-
       {loading && !data && (
         <div className="state">
           <div className="spinner" />
@@ -326,7 +321,20 @@ export default function Page() {
             onRefresh={refreshCohorts}
             refreshing={refreshingCohorts}
           />
-          <PriceChart price={price?.usdPrice ?? null} />
+        </>
+      )}
+
+      {/* Chart + swap sit side by side; both are independent of the holder
+          scan, so they stay usable even while it loads or fails. */}
+      <div className="chart-row">
+        <PriceChart price={price?.usdPrice ?? null} />
+        <div className="swap-col">
+          <SwapPanel />
+        </div>
+      </div>
+
+      {data && (
+        <>
           <PoolsSection pools={data.pools ?? []} price={price} />
           <HoldersTable
             data={data}
