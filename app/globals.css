@@ -768,34 +768,64 @@ a.node-sub:hover {
     color: var(--green);
   }
 }
+/* Mobile keeps the same horizontal flow + curves, just scaled down. */
 @media (max-width: 620px) {
+  .income {
+    padding: 12px 12px;
+  }
   .moneyflow {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+    gap: 5px;
   }
   .mf-in {
-    align-items: center;
+    gap: 5px;
   }
-  .node.wallet.hub {
-    align-self: center;
+  .node {
+    padding: 8px 5px;
+    gap: 2px;
   }
   .node.source,
   .node.wallet.hub {
-    width: 110px;
+    width: 74px;
   }
-  /* Curves don't read well stacked — drop to a simple centred node list. */
+  .node-icon {
+    font-size: 14px;
+  }
+  .node-label {
+    font-size: 10.5px;
+  }
+  .node-sub {
+    font-size: 8px;
+  }
+  .mf-in .pipe {
+    min-width: 14px;
+  }
   .mf-curves {
-    display: none;
-  }
-  .mf-out {
-    flex: none;
-    justify-content: center;
+    min-width: 18px;
   }
   .mf-out-nodes {
-    width: 100%;
-    max-width: 260px;
-    margin: 0 auto;
+    width: 90px;
+    gap: 7px;
+  }
+  .node.out {
+    padding: 7px 5px;
+  }
+  .out-top {
+    gap: 3px;
+  }
+  .out-icon {
+    font-size: 11px;
+  }
+  .out-amt {
+    font-size: 13px;
+  }
+  .curve-flow {
+    stroke-width: 4;
+    stroke-dasharray: 0.01 20;
+  }
+  .fee-dot {
+    width: 5px;
+    height: 5px;
+    margin-top: -2.5px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
