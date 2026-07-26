@@ -80,6 +80,12 @@ async function heliusRpc<T>(
   throw lastErr instanceof Error ? lastErr : new Error(`Helius ${method} failed`);
 }
 
+/** Native SOL balance for an address, in SOL (not lamports). */
+export async function getSolBalance(address: string): Promise<number> {
+  const res = await heliusRpc<{ value: number }>("getBalance", [address]);
+  return (res?.value ?? 0) / 1e9;
+}
+
 export interface TokenSupply {
   amount: string; // raw integer as string
   decimals: number;

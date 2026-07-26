@@ -123,6 +123,35 @@ a {
   font-weight: 700;
   color: var(--accent);
 }
+/* Title + inline headline stats (holders, circ supply) */
+.title-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.title-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+.title-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.ts-num {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
+.ts-label {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-faint);
+}
 .mint-row {
   display: flex;
   align-items: center;
@@ -314,9 +343,469 @@ a {
   letter-spacing: -0.2px;
   color: var(--text);
 }
+/* Section heading wrapped in a button, collapses/expands the section */
+.collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.collapse-btn .chev {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+.collapse-btn:hover {
+  border-color: var(--text-dim);
+}
+.collapse-btn:hover .chev {
+  color: var(--text-dim);
+}
 .section-head .hint {
   color: var(--text-faint);
   font-size: 12px;
+}
+
+/* Segmented control that tabs Distribution / Hold-time / Pools */
+.tabbar {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab.on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+@media (max-width: 560px) {
+  .tabbar {
+    display: flex;
+  }
+  .tab {
+    flex: 1;
+    padding: 7px 10px;
+    text-align: center;
+  }
+}
+
+/* --- Live dev-wallet income flow --- */
+.income {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 26px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.income.claiming {
+  border-color: rgba(74, 222, 128, 0.55);
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.25),
+    0 0 28px rgba(74, 222, 128, 0.18);
+}
+.income-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.income-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+.income-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.income-total {
+  text-align: right;
+  white-space: nowrap;
+}
+.it-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 2px;
+}
+.it-num {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.3px;
+}
+.it-usd {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* Money flow: [Pump fees] →in→ [wallet hub] →out→ [3 spend nodes] */
+.moneyflow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mf-in {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.mf-in .pipe {
+  flex: 1;
+}
+.node.wallet.hub {
+  flex-shrink: 0;
+  align-self: center;
+}
+.mf-out {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+}
+/* Curved SVG connectors fanning from the wallet out to the three nodes. */
+.mf-curves {
+  position: relative;
+  flex: 1;
+  min-width: 44px;
+  overflow: visible;
+}
+.mf-curves svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.curve-base {
+  fill: none;
+  stroke: rgba(251, 113, 133, 0.22);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.curve-flow {
+  fill: none;
+  stroke: #fb7185;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 0.01 26;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 3px rgba(251, 113, 133, 0.65));
+  animation: curveflow 2.4s linear infinite;
+}
+@keyframes curveflow {
+  to {
+    stroke-dashoffset: -26.01;
+  }
+}
+.mf-out-nodes {
+  flex-shrink: 0;
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mf-out-nodes .node.out {
+  width: 100%;
+}
+.out-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.out-row .pipe {
+  flex: 1;
+  min-width: 36px;
+}
+.out-row .node.out {
+  flex-shrink: 0;
+  width: 160px;
+}
+.node {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 132px;
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-2);
+  text-align: center;
+}
+.node-icon {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+.node.source .node-icon {
+  color: #7dd3fc;
+}
+.wallet-icon {
+  color: var(--green);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+.income.claiming .wallet-icon {
+  transform: scale(1.25);
+}
+.node-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.node-sub {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  text-decoration: none;
+}
+a.node-sub:hover {
+  color: var(--text-dim);
+}
+.node.wallet {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.income.claiming .node.wallet {
+  border-color: rgba(74, 222, 128, 0.6);
+  box-shadow: 0 0 22px rgba(74, 222, 128, 0.28);
+}
+
+/* Spend nodes — red side of the flow */
+.node.out {
+  padding: 10px 10px;
+  border-color: rgba(251, 113, 133, 0.28);
+}
+.node.out .out-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.out-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+.out-amt {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--red);
+  letter-spacing: 0.3px;
+}
+
+/* The pipe carries a subtle continuous flow of fee particles. */
+.pipe {
+  position: relative;
+  flex: 1;
+  min-width: 60px;
+  overflow: hidden;
+}
+.pipe-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    90deg,
+    rgba(125, 211, 252, 0.15),
+    rgba(74, 222, 128, 0.35)
+  );
+  border-radius: 2px;
+}
+.fee-dot {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.8);
+  animation: feeflow 3s linear infinite;
+}
+/* Outflow pipes run red and a touch quicker. */
+.pipe.out .pipe-line {
+  background: linear-gradient(
+    90deg,
+    rgba(251, 113, 133, 0.4),
+    rgba(251, 113, 133, 0.12)
+  );
+}
+.pipe.out .fee-dot {
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  background: #fb7185;
+  box-shadow: 0 0 8px rgba(251, 113, 133, 0.8);
+  animation-duration: 2.6s;
+}
+@keyframes feeflow {
+  0% {
+    left: -2%;
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  88% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    left: 102%;
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+/* A claim sends a labelled packet racing into the wallet. */
+.fee-packet {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--green);
+  color: #05300f;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 0 18px rgba(74, 222, 128, 0.7);
+  animation: feepacket 2.6s cubic-bezier(0.4, 0, 0.5, 1) forwards;
+}
+@keyframes feepacket {
+  0% {
+    left: 0;
+    opacity: 0;
+    transform: translateY(-50%) scale(0.6);
+  }
+  14% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  82% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+    transform: translateY(-50%) scale(0.75);
+  }
+}
+.income-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.income-foot strong {
+  color: var(--green);
+  font-weight: 700;
+}
+.income-foot .venue {
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text-dim);
+}
+.income-foot-r {
+  color: var(--text-faint);
+}
+.income-foot .flash {
+  animation: footflash 1s ease;
+}
+@keyframes footflash {
+  0%,
+  100% {
+    color: var(--text-dim);
+  }
+  30% {
+    color: var(--green);
+  }
+}
+@media (max-width: 620px) {
+  .moneyflow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .mf-in {
+    align-items: center;
+  }
+  .node.wallet.hub {
+    align-self: center;
+  }
+  .node.source,
+  .node.wallet.hub {
+    width: 110px;
+  }
+  /* Curves don't read well stacked — drop to a simple centred node list. */
+  .mf-curves {
+    display: none;
+  }
+  .mf-out {
+    flex: none;
+    justify-content: center;
+  }
+  .mf-out-nodes {
+    width: 100%;
+    max-width: 260px;
+    margin: 0 auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fee-dot,
+  .fee-packet {
+    animation: none;
+  }
+  .fee-dot {
+    display: none;
+  }
 }
 
 /* Bucket grid */

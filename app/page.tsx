@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { HoldersPayload, Holder, BucketStat } from "@/lib/holders";
 import { TOKEN_MINT, AGE_COHORTS, cohortForDays } from "@/lib/config";
 import PriceChart from "@/components/PriceChart";
+import IncomeFlow from "@/components/IncomeFlow";
 import dynamic from "next/dynamic";
 
 // Wallet stack is client-only; never server-render it.
@@ -61,6 +62,9 @@ export default function Page() {
   const [retryRound, setRetryRound] = useState(0);
   const [refreshingCohorts, setRefreshingCohorts] = useState(false);
   const [refreshingTable, setRefreshingTable] = useState(false);
+  const [activeTab, setActiveTab] = useState<"distribution" | "holdtime" | "pools">(
+    "distribution"
+  );
 
   const fetchHolders = useCallback(async (force = false) => {
     setLoading(true);
@@ -250,7 +254,25 @@ export default function Page() {
 /|\       /|\
 (_/         \_)`}</pre>
           <div>
-            <h1>$febu holders</h1>
+            <div className="title-row">
+              <h1>$febu holders</h1>
+              {data && (
+                <div className="title-stats">
+                  <span className="title-stat">
+                    <span className="ts-num">
+                      {data.totalHolders.toLocaleString()}
+                    </span>
+                    <span className="ts-label">holders</span>
+                  </span>
+                  <span className="title-stat">
+                    {/* On-chain supply is already post-burn (burned = launch
+                        1B − current supply), so this is the circulating figure. */}
+                    <span className="ts-num">{fmtNumber(data.supply.uiAmount)}</span>
+                    <span className="ts-label">circ supply</span>
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="mint-row">
               <span className="mint-pill">{shortAddr(TOKEN_MINT, 6, 6)}</span>
               <button className="copy-btn" onClick={copyMint}>
@@ -301,41 +323,78 @@ export default function Page() {
         </div>
       )}
 
+      {/* Live income for the autonomous dev wallet — independent of the holder
+          scan, so it renders above the tabs regardless of load state. */}
+      <IncomeFlow />
+
       {data && (
         <>
-          <StatCards data={data} price={price} />
-          <BucketSection
-            buckets={data.buckets}
-            bucketsExPools={data.bucketsExPools}
-            burned={data.burned}
-            liquidity={data.liquidity}
-            totalHolders={data.totalHolders}
-            price={price}
-            prevBuckets={prevBuckets}
-            baselineAge={baselineAge}
-            supplyUi={data.supply.uiAmount}
-          />
-          <CohortSection
-            cohortStats={cohortStats}
-            prevCounts={prevCounts}
-            onRefresh={refreshCohorts}
-            refreshing={refreshingCohorts}
-          />
+          {/* Distribution / Hold-time / Pools were three stacked strips; they
+              answer the same "who holds this?" question, so they now share one
+              tabbed panel to cut the page length. */}
+          <div className="tabbar" role="tablist" aria-label="Holder analytics">
+            <button
+              role="tab"
+              aria-selected={activeTab === "distribution"}
+              className={`tab${activeTab === "distribution" ? " on" : ""}`}
+              onClick={() => setActiveTab("distribution")}
+            >
+              Distribution
+            </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === "holdtime"}
+              className={`tab${activeTab === "holdtime" ? " on" : ""}`}
+              onClick={() => setActiveTab("holdtime")}
+            >
+              Hold-time
+            </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === "pools"}
+              className={`tab${activeTab === "pools" ? " on" : ""}`}
+              onClick={() => setActiveTab("pools")}
+            >
+              Pools
+            </button>
+          </div>
+
+          {activeTab === "distribution" && (
+            <BucketSection
+              buckets={data.buckets}
+              bucketsExPools={data.bucketsExPools}
+              burned={data.burned}
+              liquidity={data.liquidity}
+              totalHolders={data.totalHolders}
+              price={price}
+              prevBuckets={prevBuckets}
+              baselineAge={baselineAge}
+              supplyUi={data.supply.uiAmount}
+            />
+          )}
+          {activeTab === "holdtime" && (
+            <CohortSection
+              cohortStats={cohortStats}
+              prevCounts={prevCounts}
+              onRefresh={refreshCohorts}
+              refreshing={refreshingCohorts}
+            />
+          )}
+          {activeTab === "pools" && (
+            <PoolsSection pools={data.pools ?? []} price={price} />
+          )}
         </>
       )}
 
-      {/* Chart + swap sit side by side; both are independent of the holder
-          scan, so they stay usable even while it loads or fails. */}
+      {/* Chart is independent of the holder scan, so it stays usable even while
+          the scan loads or fails. Swap is temporarily hidden from the UI (still
+          wired up in code via <SwapPanel /> — re-add the swap-col to restore). */}
       <div className="chart-row">
         <PriceChart price={price?.usdPrice ?? null} />
-        <div className="swap-col">
-          <SwapPanel />
-        </div>
       </div>
 
       {data && (
         <>
-          <PoolsSection pools={data.pools ?? []} price={price} />
           <HoldersTable
             data={data}
             ages={ages}
@@ -375,63 +434,6 @@ function PricePill({ price, stale }: { price: PriceInfo | null; stale: boolean }
             {up ? "▲" : "▼"} {Math.abs(price.priceChange24h).toFixed(2)}% 24h
           </span>
         )}
-      </div>
-    </div>
-  );
-}
-
-function StatCards({ data, price }: { data: HoldersPayload; price: PriceInfo | null }) {
-  const marketCap = price ? price.usdPrice * data.supply.uiAmount : null;
-  return (
-    <div className="stats">
-      <div className="card">
-        <div className="stat-label">Holders</div>
-        <div className="stat-value">{data.totalHolders.toLocaleString()}</div>
-        <div className="stat-sub">{data.totalAccounts.toLocaleString()} token accounts</div>
-      </div>
-      <div className="card accent">
-        <div className="stat-label">Price · Market Cap</div>
-        <div className="stat-value">{price ? fmtPrice(price.usdPrice) : "—"}</div>
-        <div className="stat-sub">
-          {marketCap != null ? `${fmtUsd(marketCap)} mcap` : "loading…"}
-          {price?.priceChange24h != null && (
-            <span
-              style={{
-                marginLeft: 8,
-                color: price.priceChange24h >= 0 ? "var(--green)" : "var(--red)",
-              }}
-            >
-              {price.priceChange24h >= 0 ? "+" : ""}
-              {price.priceChange24h.toFixed(2)}%
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="card">
-        <div className="stat-label">Total Supply</div>
-        <div className="stat-value">{fmtNumber(data.supply.uiAmount)}</div>
-        <div className="stat-sub">{data.supply.decimals} decimals</div>
-      </div>
-      <div className="card">
-        <div className="stat-label">Top 10 Hold</div>
-        <div className="stat-value">{fmtPct(data.concentration.top10)}</div>
-        <div className="stat-sub">Top 1: {fmtPct(data.concentration.top1)}</div>
-      </div>
-      {/* Token-level facts, not holder tiers — they belong up here. */}
-      <div className="card">
-        <div className="stat-label">Burned</div>
-        <div className="stat-value">{fmtPct(data.burned.pct)}</div>
-        <div className="stat-sub">
-          {price ? fmtUsd(data.burned.amount * price.usdPrice) : "—"} ·{" "}
-          {fmtNumber(data.burned.amount)}
-        </div>
-      </div>
-      <div className="card">
-        <div className="stat-label">Liquidity</div>
-        <div className="stat-value">{fmtPct(data.liquidity.pct)}</div>
-        <div className="stat-sub">
-          {data.liquidity.count} pools · {data.liquidity.venues.join(", ") || "—"}
-        </div>
       </div>
     </div>
   );
@@ -834,6 +836,9 @@ function HoldersTable({
   const loadedCount = Object.keys(ages).length;
   const hasMore = loadedCount < data.holders.length;
 
+  // The leaderboard is long, so it starts collapsed and expands on click.
+  const [open, setOpen] = useState(false);
+
   // Pool composition, fetched on demand when an LP badge is clicked.
   const [openPool, setOpenPool] = useState<string | null>(null);
   const [poolData, setPoolData] = useState<Record<string, PoolDetail | "loading">>(
@@ -868,23 +873,34 @@ function HoldersTable({
   return (
     <div className="section">
       <div className="section-head">
-        <h2>Top {data.holders.length} holders</h2>
-        <div className="head-tools">
-          <span className="hint">
-            of {data.totalHolders.toLocaleString()} total ·{" "}
-            {loadedCount.toLocaleString()} hold times loaded
-            {data.rankWindowSeconds != null
-              ? ` · movement vs ${fmtDuration(data.rankWindowSeconds)} ago`
-              : ""}
-            {data.flowsAgeSeconds != null
-              ? ` · buy/sell top 50, updated ${fmtDuration(data.flowsAgeSeconds)} ago`
-              : ""}
-          </span>
-          <button className="mini-refresh" onClick={onRefresh} disabled={refreshing}>
-            {refreshing ? "↻ …" : "↻ Refresh"}
-          </button>
-        </div>
+        <button
+          className="collapse-btn"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          Top {data.holders.length} holders
+          <span className="chev" aria-hidden="true">{open ? "▾" : "▸"}</span>
+        </button>
+        {open && (
+          <div className="head-tools">
+            <span className="hint">
+              of {data.totalHolders.toLocaleString()} total ·{" "}
+              {loadedCount.toLocaleString()} hold times loaded
+              {data.rankWindowSeconds != null
+                ? ` · movement vs ${fmtDuration(data.rankWindowSeconds)} ago`
+                : ""}
+              {data.flowsAgeSeconds != null
+                ? ` · buy/sell top 50, updated ${fmtDuration(data.flowsAgeSeconds)} ago`
+                : ""}
+            </span>
+            <button className="mini-refresh" onClick={onRefresh} disabled={refreshing}>
+              {refreshing ? "↻ …" : "↻ Refresh"}
+            </button>
+          </div>
+        )}
       </div>
+      {open && (
+      <>
       <div className="table-wrap">
         <div className="table-scroll">
           <table>
@@ -1015,6 +1031,8 @@ function HoldersTable({
             {loadingMore ? "Loading hold times…" : "Load hold times for more rows"}
           </button>
         </div>
+      )}
+      </>
       )}
     </div>
   );
