@@ -49,7 +49,7 @@ const OUT_NODES: Array<{
     key: "fireblocks",
     icon: "🏦",
     label: "Fireblocks",
-    sub: (o) => `custody · ${o.count} tx`,
+    sub: (o) => `Treasury · ${o.count} tx`,
   },
   { key: "pump", icon: "💊", label: "pump.fun", sub: () => "2 tokens" },
   {
@@ -261,7 +261,7 @@ export default function IncomeFlow() {
               · {relTime(last.timestamp)}
             </span>
             <span className="income-foot-r">
-              {data?.count24h ?? 0} claim{data?.count24h === 1 ? "" : "s"} / 24h
+              {data?.count ?? 0} claim{data?.count === 1 ? "" : "s"} total
             </span>
           </>
         ) : (
