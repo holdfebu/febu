@@ -255,8 +255,7 @@ export default function Page() {
     <>
       <nav className="navbar">
         <div className="header navbar-inner">
-        <div className="brand">
-          <pre className="logo" aria-label="febu">{String.raw`\   |   /
+        <pre className="logo" aria-label="febu">{String.raw`\   |   /
 --- ( ) ---
 /   |   \
 |  o   o  |
@@ -264,8 +263,7 @@ export default function Page() {
 /  f e b u  \
 /|\       /|\
 (_/         \_)`}</pre>
-          <h1>organic communities<br />will win</h1>
-        </div>
+        <h1 className="nav-title">organic communities<br />will win</h1>
         <div className="header-right">
           <span className="runner-btn disabled" title="Coming soon">
             ✦ Runner

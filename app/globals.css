@@ -100,17 +100,41 @@ a {
   border-bottom: 1px solid rgba(250, 204, 21, 0.4);
 }
 .navbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
   padding: 12px 24px;
 }
+.navbar-inner .header-right {
+  margin-left: auto;
+}
+/* Mobile: logo sits to the side spanning both rows so the bar stays thin. */
 @media (max-width: 620px) {
   .navbar-inner {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "logo title" "logo actions";
     align-items: center;
-    gap: 12px;
-    text-align: center;
+    justify-items: start;
+    gap: 6px 14px;
+    padding: 8px 16px;
   }
-  .header-right {
-    justify-content: center;
+  .navbar-inner .logo {
+    grid-area: logo;
+    align-self: center;
+    font-size: 5px;
+    line-height: 6px;
+  }
+  .navbar-inner .nav-title {
+    grid-area: title;
+    text-align: left;
+    font-size: 13px;
+  }
+  .navbar-inner .header-right {
+    grid-area: actions;
+    margin-left: 0;
+    justify-content: flex-start;
     flex-wrap: wrap;
   }
 }
@@ -127,11 +151,6 @@ a {
 .navbar .header {
   margin-bottom: 0;
 }
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
 /* ASCII robot mark */
 .logo {
   font-family: var(--mono);
@@ -146,7 +165,7 @@ a {
   user-select: none;
   flex-shrink: 0;
 }
-.brand h1 {
+.nav-title {
   font-family: var(--mono);
   font-size: 15px;
   line-height: 1.2;
