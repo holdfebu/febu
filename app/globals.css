@@ -134,8 +134,13 @@ a {
   .navbar-inner .header-right {
     grid-area: actions;
     margin-left: 0;
-    justify-content: flex-start;
+    justify-self: end;
+    justify-content: flex-end;
     flex-wrap: wrap;
+  }
+  /* Hide the price pill on mobile; keep only the Runner button, far right. */
+  .navbar-inner .price-pill {
+    display: none;
   }
 }
 
