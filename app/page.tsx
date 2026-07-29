@@ -242,8 +242,9 @@ export default function Page() {
   const copyMint = () => navigator.clipboard?.writeText(TOKEN_MINT);
 
   return (
-    <div className="wrap">
-      <header className="header">
+    <>
+      <nav className="navbar">
+        <div className="header navbar-inner">
         <div className="brand">
           <pre className="logo" aria-label="febu">{String.raw`\   |   /
 --- ( ) ---
@@ -302,8 +303,10 @@ export default function Page() {
             {loading ? "Loading…" : "↻ Refresh"}
           </button>
         </div>
-      </header>
+        </div>
+      </nav>
 
+      <div className="wrap">
       {loading && !data && (
         <div className="state">
           <div className="spinner" />
@@ -410,7 +413,8 @@ export default function Page() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

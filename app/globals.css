@@ -88,6 +88,21 @@ a {
   padding: 32px 24px 80px;
 }
 
+/* Full-width sticky nav bar */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  background: rgba(10, 10, 12, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(250, 204, 21, 0.4);
+}
+.navbar-inner {
+  padding: 12px 24px;
+}
+
 /* Header */
 .header {
   display: flex;
@@ -96,6 +111,9 @@ a {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 28px;
+}
+.navbar .header {
+  margin-bottom: 0;
 }
 .brand {
   display: flex;
@@ -420,7 +438,7 @@ a {
 
 /* --- Live dev-wallet income flow --- */
 .income {
-  border: 1px solid var(--border);
+  border: 1px solid rgba(250, 204, 21, 0.4);
   background: var(--panel);
   border-radius: 16px;
   padding: 16px 18px;
@@ -1653,9 +1671,9 @@ td.rank {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid var(--border-soft);
-  background: transparent;
-  color: var(--text-faint);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  background: rgba(250, 204, 21, 0.08);
+  color: var(--yellow);
   padding: 9px 16px;
   border-radius: 10px;
   font-size: 13px;
@@ -1664,7 +1682,7 @@ td.rank {
 .runner-btn.disabled {
   pointer-events: none;
   user-select: none;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 /* --- Swap widget --- */
