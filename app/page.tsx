@@ -359,21 +359,14 @@ export default function Page() {
       </div>
 
       {data && (
-        <>
-          <HoldersTable
-            data={data}
-            ages={ages}
-            onLoadMore={loadMoreAges}
-            loadingMore={loadingMore}
-            onRefresh={refreshTable}
-            refreshing={refreshingTable}
-          />
-
-          <div className="footer">
-            Data via Helius · fetched {fmtDate(Math.floor(data.fetchedAt / 1000))} · Hold
-            time = age since the wallet&apos;s token account first received this token.
-          </div>
-        </>
+        <HoldersTable
+          data={data}
+          ages={ages}
+          onLoadMore={loadMoreAges}
+          loadingMore={loadingMore}
+          onRefresh={refreshTable}
+          refreshing={refreshingTable}
+        />
       )}
       </div>
     </>

@@ -102,6 +102,18 @@ a {
 .navbar-inner {
   padding: 12px 24px;
 }
+@media (max-width: 620px) {
+  .navbar-inner {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+  .header-right {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
 
 /* Header */
 .header {
