@@ -35,7 +35,7 @@ interface IncomePayload {
   at: number;
 }
 
-const POLL_MS = 6 * 60 * 60 * 1000; // every 6 hours
+const POLL_MS = 10 * 60 * 1000; // every 10 minutes
 const NUM_DOTS = 5;
 
 // The three spend buckets, top to bottom.

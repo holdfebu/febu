@@ -30,6 +30,9 @@ interface PriceInfo {
 }
 
 const PRICE_POLL_MS = 3_000;
+// Auto-refresh the holder stats so nothing goes stale (there's no manual
+// Refresh button anymore). Comfortably inside the 20-minute freshness bar.
+const STATS_REFRESH_MS = 10 * 60 * 1000;
 
 interface PoolDetail {
   owner: string;
@@ -87,6 +90,13 @@ export default function Page() {
 
   useEffect(() => {
     fetchHolders();
+  }, [fetchHolders]);
+
+  // Keep the holder stats (buckets, cohorts, table) fresh on a timer so they
+  // never sit stale — the manual Refresh button was removed from the nav.
+  useEffect(() => {
+    const id = setInterval(() => fetchHolders(), STATS_REFRESH_MS);
+    return () => clearInterval(id);
   }, [fetchHolders]);
 
   // Poll the Jupiter price every 10 seconds.
@@ -254,54 +264,13 @@ export default function Page() {
 /  f e b u  \
 /|\       /|\
 (_/         \_)`}</pre>
-          <div>
-            <div className="title-row">
-              <h1>$febu holders</h1>
-              {data && (
-                <div className="title-stats">
-                  <span className="title-stat">
-                    <span className="ts-num">
-                      {data.totalHolders.toLocaleString()}
-                    </span>
-                    <span className="ts-label">holders</span>
-                  </span>
-                  <span className="title-stat">
-                    {/* On-chain supply is already post-burn (burned = launch
-                        1B − current supply), so this is the circulating figure. */}
-                    <span className="ts-num">{fmtNumber(data.supply.uiAmount)}</span>
-                    <span className="ts-label">circ supply</span>
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="mint-row">
-              <span className="mint-pill">{shortAddr(TOKEN_MINT, 6, 6)}</span>
-              <button className="copy-btn" onClick={copyMint}>
-                copy
-              </button>
-              <a
-                className="copy-btn"
-                href={`https://solscan.io/token/${TOKEN_MINT}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                solscan ↗
-              </a>
-            </div>
-          </div>
+          <h1>organic communities<br />will win</h1>
         </div>
         <div className="header-right">
           <span className="runner-btn disabled" title="Coming soon">
             ✦ Runner
           </span>
           <PricePill price={price} stale={priceStale} />
-          <button
-            className="refresh"
-            onClick={refreshTable}
-            disabled={loading || refreshingTable}
-          >
-            {loading ? "Loading…" : "↻ Refresh"}
-          </button>
         </div>
         </div>
       </nav>

@@ -38,7 +38,11 @@ const NON_CLAIM_TYPES = new Set([
 const FIREBLOCKS = new Set(["2o8faRejF81xFFDAuGrRkhsEytEZfeC7LNLq6aX4Mkse"]);
 
 const LAMPORTS = 1e9;
-const DUST_SOL = 0.0005; // ignore flows smaller than this
+const DUST_SOL = 0.0005; // ignore outflows smaller than this
+// A real fee claim vs. rent-dust from closing an empty account. PumpSwap fees
+// paid in wrapped SOL show up as large CLOSE_ACCOUNT unwraps; this floor keeps
+// those while dropping the ~0.002 SOL rent reclaims.
+const CLAIM_MIN_SOL = 0.05;
 
 export interface FeeClaim {
   signature: string;
@@ -86,15 +90,19 @@ interface HeliusTx {
 }
 
 function classifyClaim(tx: HeliusTx, netInSol: number): FeeClaim | null {
-  if (!PUMP_SOURCES.has(tx.source)) return null;
-  if (NON_CLAIM_TYPES.has(tx.type)) return null;
-  if (tx.feePayer !== DEV_WALLET) return null; // claims are self-signed
-  if (netInSol < DUST_SOL) return null;
+  // Fee income lands two ways: native SOL claims Helius tags PUMP_FUN/PUMP_AMM,
+  // and PumpSwap fees paid in wrapped SOL that the wallet later unwraps via a
+  // CLOSE_ACCOUNT. Both are wallet-signed, non-trade, and net SOL in — so match
+  // on those properties rather than the pump source alone (which missed the
+  // unwraps, leaving "last claim" days stale).
+  if (NON_CLAIM_TYPES.has(tx.type)) return null; // exclude buys/sells/swaps
+  if (tx.feePayer !== DEV_WALLET) return null; // self-signed only
+  if (netInSol < CLAIM_MIN_SOL) return null;
   return {
     signature: tx.signature,
     timestamp: tx.timestamp,
     sol: netInSol,
-    venue: tx.source === "PUMP_AMM" ? "pumpswap" : "pump",
+    venue: tx.source === "PUMP_FUN" ? "pump" : "pumpswap",
   };
 }
 
@@ -203,9 +211,9 @@ async function fetchSolPrice(): Promise<number | null> {
   }
 }
 
-// Shared across all viewers, and the underlying data only moves when the agent
-// acts (roughly hourly at most), so recompute at most every 30 minutes.
-const CACHE_TTL_MS = 30 * 60_000;
+// Shared across all viewers so one crawl serves everyone; refresh every ~8 min
+// so the balance and last-claim stay well within the 20-minute freshness bar.
+const CACHE_TTL_MS = 8 * 60_000;
 let cache: { at: number; data: IncomePayload } | null = null;
 let inflight: Promise<IncomePayload> | null = null;
 
