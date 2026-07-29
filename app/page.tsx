@@ -276,13 +276,6 @@ export default function Page() {
       </nav>
 
       <div className="wrap">
-      {loading && !data && (
-        <div className="state">
-          <div className="spinner" />
-          Scanning the chain for holders…
-        </div>
-      )}
-
       {error && (
         <div className="state error">
           <strong>Couldn&apos;t load data.</strong>
